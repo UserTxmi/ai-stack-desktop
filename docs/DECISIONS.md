@@ -1,5 +1,7 @@
 # Registro de decisiones
 
+**Revisión 2C:** el usuario aprueba la prueba interactiva básica de 2B en Windows 11 y autoriza el workspace portable `0.0.3-dev`. D1: se reutilizan los activos incluidos en el PE oficial, con un origen local restringido al SDK del servidor propio; se descarta abrir directamente una ruta con fallback remoto. D5: el instalador final será un EXE clásico distinto de la aplicación ([Producto](PRODUCT.md)); sigue fuera de esta fase. Evidencia y límites en el [informe 2C](PHASE2C_REPORT.md).
+
 **26-11-2026 · Revisión del responsable del producto:** aceptados los doce entregables de fase 0 y las siguientes condiciones. Se autoriza la **preparación experimental 1A** en este repositorio. La aceptación de la arquitectura no certifica ninguna combinación Windows ni autoriza producción. La fuente de verdad es `docs/`, incluso si un resumen de Engram anterior aún dice «pendiente».
 
 | ID | Resolución | Condición que se mantiene |

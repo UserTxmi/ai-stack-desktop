@@ -17,7 +17,7 @@ ALLOWED = {'MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'Unicode-3.0', '
 def main(out):
     packages = json.loads(subprocess.check_output(['cargo', 'metadata', '--locked', '--format-version', '1',
         '--filter-platform', 'x86_64-pc-windows-msvc'], cwd=ROOT))['packages']
-    pages = ['Avisos de terceros · AI Stack Desktop 0.0.2-dev\nFuentes sin modificaciones disponibles en los enlaces de cada versión.']
+    pages = ['Avisos de terceros · AI Stack Desktop 0.0.3-dev\nFuentes sin modificaciones disponibles en los enlaces de cada versión.']
     for p in packages:
         if p['name'] in ('ai-stack-desktop', 'w1-supervisor') and not p['source']:
             continue

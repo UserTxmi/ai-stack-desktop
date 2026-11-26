@@ -208,7 +208,7 @@ impl Job {
             ))
         }
     }
-    pub fn stop(&mut self) -> Result<()> {
+    pub fn stop(&self) -> Result<()> {
         unsafe { ok(TerminateJobObject(self.handle.as_raw_handle(), 0))? };
         for _ in 0..100 {
             if self.pids()?.is_empty() {

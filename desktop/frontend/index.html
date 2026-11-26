@@ -1,9 +1,11 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AI Stack Desktop</title><link rel="stylesheet" href="style.css"><script type="module" src="main.js"></script></head><body>
-<header><small>LABORATORIO LOCAL · WINDOWS x64</small><h1>AI Stack Desktop <span>0.0.2-dev</span></h1><p>Demo W1 · Proveedor sintético · Sin cuentas externas</p></header>
-<main><h2>Preparación</h2><p id="location"></p><details><summary>Ubicación de componentes y archivos</summary><ul id="paths"></ul></details>
-<p id="prep" role="status">Comprobando archivos…</p><p>Node.js 24.21.0 · npm 11.19.0 · SQLite 13.0.3 · Plugin OmniRoute 0.2.2</p>
-<nav><button id="prepare" disabled>Preparar runtimes</button></nav>
+<nav id="tabs" aria-label="Secciones"><button data-view="workspace">Workspace</button><button data-view="projects">Proyectos</button><button data-view="stack">Servicios</button><button data-view="diagnostics">Diagnóstico</button><button data-view="settings">Configuración</button></nav>
+<main>
+<article id="workspace"><small>AI STACK DESKTOP · 0.0.3-dev</small><h1>Workspace OpenCode</h1><p>Prepare e inicie el stack en Servicios. Después elija una carpeta para empezar o recuperar una conversación.</p><p><button id="choose">Abrir proyecto…</button> <button id="manage">Ir a Servicios</button></p></article>
+<article id="projects" hidden><h1>Proyectos</h1><button id="add">Seleccionar carpeta…</button><p>Recientes en esta instalación:</p><ul id="recent"></ul></article>
+<article id="stack" hidden><h1>Servicios</h1><p id="prep" role="status">Comprobando archivos…</p><nav><button id="prepare" disabled>Preparar runtimes</button></nav>
 <div id="progress" hidden><p id="stage" role="status"></p><progress id="steps" aria-label="Componentes comprobados" max="5"></progress> <small id="count"></small><p id="transfer" hidden><progress id="bytes" aria-label="Bytes de descarga"></progress> <small id="size"></small></p></div>
-<h2>Stack</h2>
-<div id="services"></div><nav><button id="start" disabled>Iniciar stack</button><button id="stop" disabled>Detener</button><button id="test" disabled>Probar turno</button></nav><p id="feedback" role="status"></p><p id="error" role="alert"></p>
-<h2>Registro del supervisor</h2><pre id="events"></pre><small>Memoria: pico de compromiso del Job. CPU: segundos acumulados del árbol, incluido el trabajador. La salida de procesos se cuenta sin conservar su contenido.</small></main></body></html>
+<div id="services"></div><nav><button id="start" disabled>Iniciar stack</button><button id="stop" disabled>Detener</button><button id="test" disabled>Probar turno</button></nav></article>
+<article id="diagnostics" hidden><h1>Diagnóstico</h1><pre id="events"></pre><small>Memoria: pico de compromiso del Job. CPU: segundos acumulados del árbol. Se cuentan bytes de salida sin conservar su contenido.</small></article>
+<article id="settings" hidden><h1>Configuración</h1><p>Perfil portable · Proveedor sintético · Permisos gestionados por OpenCode.</p><p id="location"></p><details><summary>Ubicación de componentes y archivos</summary><ul id="paths"></ul></details></article>
+<p id="feedback" role="status"></p><p id="error" role="alert"></p></main></body></html>

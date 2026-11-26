@@ -8,5 +8,21 @@ fn main() {
     ico.extend_from_slice(&[0x89, 0x84, 0x21, 0xff, 0, 0, 0, 0]);
     std::fs::create_dir_all("build").unwrap();
     std::fs::write("build/desktop.ico", ico).unwrap();
-    tauri_build::build()
+    let commands = &[
+        "ubicacion",
+        "progreso",
+        "estado",
+        "preparar",
+        "iniciar",
+        "detener",
+        "probar",
+        "elegir",
+        "abrir",
+        "vista",
+    ];
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .app_manifest(tauri_build::AppManifest::new().commands(commands)),
+    )
+    .unwrap();
 }

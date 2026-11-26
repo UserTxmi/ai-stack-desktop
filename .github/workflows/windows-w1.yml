@@ -1,4 +1,4 @@
-name: Windows x64 · Desktop 2B y regresión W1
+name: Windows x64 · Desktop 2C y regresión W1
 on:
   workflow_dispatch:
     inputs:
@@ -74,6 +74,14 @@ jobs:
             $env:Path = "$env:SystemRoot\System32;$env:SystemRoot"
             .\desktop\ci-preparacion.ps1 -Root $root -Output $out
           } finally { $env:Path = $previous }
+      - name: Workspace del EXE sobre el servidor supervisado y recuperación tras reinicio
+        run: |
+          $project = (New-Item -ItemType Directory 'Proyecto CI ñ').FullName
+          $report = Join-Path $PWD 'evidencia/workspace.txt'
+          $p = Start-Process 'AI Stack ñ/bin/ai-stack-desktop.exe' -ArgumentList @('--ci-workspace', "`"$report`"", "`"$project`"") -PassThru
+          if (!$p.WaitForExit(540000)) { $p.Kill(); throw 'Plazo de workspace agotado' }
+          Get-Content -LiteralPath $report
+          if ($p.ExitCode -ne 0) { throw 'No se superó la integración del workspace' }
       - name: CPA y receptor sintético
         if: ${{ env.SUITE == 'completa' }}
         run: py -3.12 -B experiments/phase1/run.py --hosted-ci --prepared-runtime 'AI Stack ñ/runtimes' --only cpa
@@ -108,7 +116,7 @@ jobs:
           $out = 'entrega'
           New-Item -ItemType Directory "$out/bin" | Out-Null
           Copy-Item 'AI Stack ñ/bin/ai-stack-desktop.exe' "$out/bin/"
-          Copy-Item evidencia/backend.txt,evidencia/preparacion-ci.txt,desktop/PROBAR.md $out
+          Copy-Item evidencia/backend.txt,evidencia/preparacion-ci.txt,evidencia/workspace.txt,desktop/PROBAR.md $out
           Copy-Item desktop/w1.json,experiments/phase1/versions.json $out
           Copy-Item experiments/phase1/.lab/export/informe.json $out
           py -3.12 -B desktop/notices.py "$out/TERCEROS.txt"
@@ -119,7 +127,7 @@ jobs:
         if: ${{ success() && env.SUITE == 'completa' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: AI-Stack-Desktop-0.0.2-dev-win-x64
+          name: AI-Stack-Desktop-0.0.3-dev-win-x64
           path: entrega/
           retention-days: 30
           if-no-files-found: error

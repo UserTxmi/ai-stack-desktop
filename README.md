@@ -1,6 +1,6 @@
-# AI Stack Desktop · prototipo Windows x64 `0.0.2-dev`
+# AI Stack Desktop · prototipo Windows x64 `0.0.3-dev`
 
-**[Descargar Windows x64 `0.0.2-dev` (ZIP de Actions)](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45905213262/artifacts/15158390656)** · [CI completa](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45905213262) · [Guía para Windows 11](desktop/PROBAR.md). Extraiga el ZIP a una carpeta privada, abra `bin\ai-stack-desktop.exe` y pulse **Preparar o reintentar**. El EXE descarga y verifica los runtimes privados desde la GUI.
+**[Workspace 2C y resultados](docs/PHASE2C_REPORT.md)** · [GitHub Actions](https://github.com/UserTxmi/ai-stack-desktop/actions/workflows/windows-w1.yml) · [Guía para Windows 11](desktop/PROBAR.md). Extraiga el ZIP a una carpeta privada, abra `bin\ai-stack-desktop.exe`, prepare e inicie el stack en **Servicios** y abra su carpeta desde **Proyectos**. La respuesta del agente es sintética.
 
 **1B-CI aprobada para W1 corregido; 1B-Desktop pendiente.** [Preparación automática 2B](docs/PHASE2B_REPORT.md) · [Prueba interactiva básica 2A en Windows 11](docs/PHASE2A_REPORT.md#prueba-interactiva-básica-en-windows-11) · [Resultados de integración W1](docs/PHASE1B_CI_REPORT.md). El prototipo conecta una ventana Tauri a un supervisor nativo y usa únicamente el proveedor de demo. No es un instalador de producción.
 

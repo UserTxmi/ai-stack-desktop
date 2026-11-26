@@ -2,6 +2,7 @@
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, State, WebviewWindowBuilder};
 use w1_supervisor::{Install, Progress, Status, Supervisor};
+mod workspace;
 
 #[derive(Clone)]
 struct Shared {
@@ -60,7 +61,10 @@ async fn iniciar(state: State<'_, Shared>) -> Result<(), String> {
     access(state, |_, s| s.start()).await
 }
 #[tauri::command]
-async fn detener(state: State<'_, Shared>) -> Result<(), String> {
+async fn detener(app: tauri::AppHandle, state: State<'_, Shared>) -> Result<(), String> {
+    if let Some(web) = app.get_webview("agent") {
+        web.close().map_err(|e| e.to_string())?;
+    }
     access(state, |_, s| s.stop()).await
 }
 #[tauri::command]
@@ -86,7 +90,11 @@ fn ci(args: &[std::ffi::OsString]) -> Option<Result<(), String>> {
     let mode = args.first()?.to_str()?;
     if !matches!(
         mode,
-        "--ci-preparar" | "--ci-verificar" | "--prueba-backend" | "--ci-cierre-forzado"
+        "--ci-preparar"
+            | "--ci-verificar"
+            | "--prueba-backend"
+            | "--ci-cierre-forzado"
+            | "--ci-workspace"
     ) {
         return None;
     }
@@ -105,6 +113,11 @@ fn ci(args: &[std::ffi::OsString]) -> Option<Result<(), String>> {
                 ));
             }
             let mut supervisor = Supervisor::new(Arc::new(install));
+            if mode=="--ci-workspace" {
+                let project=args.get(2).ok_or("Falta proyecto sintético")?;
+                supervisor.test_workspace(std::path::Path::new(project))?;
+                return Ok("Workspace autenticado; UI local, modelos y agentes, sesión, streaming, cancelación, permiso rechazado, historial tras reinicio y Jobs vacíos.\n".into());
+            }
             if mode == "--ci-cierre-forzado" {
                 supervisor.start()?;
                 let pids = supervisor.owned_pids()?;
@@ -200,7 +213,8 @@ fn main() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![ubicacion, progreso, estado, preparar, iniciar, detener, probar])
+        .on_window_event(|win,event|{if matches!(event,tauri::WindowEvent::Resized(_)|tauri::WindowEvent::ScaleFactorChanged{..}){let _=workspace::resize(win.app_handle());}})
+        .invoke_handler(tauri::generate_handler![ubicacion, progreso, estado, preparar, iniciar, detener, probar,workspace::elegir,workspace::abrir,workspace::vista])
         .build(tauri::generate_context!())
     {
         Ok(app) => app.run(|app, event| {

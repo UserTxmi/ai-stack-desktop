@@ -16,12 +16,15 @@ mod http;
 mod install;
 mod job;
 mod preparation;
+mod web_assets;
+mod workspace;
 use http::Api;
 pub use install::Install;
 pub use job::worker_mode;
 use job::{Job, Spec};
 pub use preparation::{prepare, verify, PreparationStats, Progress};
 use sha2::{Digest, Sha256};
+pub use workspace::Workspace;
 type Result<T> = std::result::Result<T, String>;
 type Env = BTreeMap<String, String>;
 trait Safe<T> {
@@ -120,7 +123,7 @@ fn demo_env(install: &Install, run: &str, role: &str, node: &Path) -> Result<Env
 }
 const DEMO_DIRS: [&str; 5] = ["config", "datos", "cache", "logs", "preparacion"];
 struct Service {
-    job: Job,
+    job: std::sync::Arc<Job>,
     api: Api,
     healthy: bool,
 }
@@ -146,6 +149,7 @@ pub struct Supervisor {
     install: std::sync::Arc<Install>,
     profile: Option<String>,
     fixture: Option<Job>,
+    workspace: Option<Workspace>,
     services: Vec<Service>,
     events: Vec<String>,
     preparation: Result<()>,
@@ -160,6 +164,7 @@ impl Supervisor {
             install,
             profile: None,
             fixture: None,
+            workspace: None,
             services: Vec::new(),
             events: vec![],
             preparation: Err("Comprobando archivos…".into()),
@@ -178,7 +183,7 @@ impl Supervisor {
         for job in self
             .fixture
             .iter()
-            .chain(self.services.iter().map(|s| &s.job))
+            .chain(self.services.iter().map(|s| s.job.as_ref()))
         {
             pids.extend(job.pids()?);
         }
@@ -205,7 +210,7 @@ impl Supervisor {
                 let (active, healthy, metrics, output_bytes) = svc
                     .map(|v| {
                         (
-                            v.job.alive(),
+                            v.job.pids().is_ok_and(|p| !p.is_empty()),
                             v.healthy,
                             v.job.metrics(),
                             v.job.bytes.load(std::sync::atomic::Ordering::Relaxed),
@@ -382,7 +387,14 @@ impl Supervisor {
             &json!({"plugin":[[uri(&plugin)?,{"providerId":"omniroute","baseURL":origin,"autoSyncIntervalMs":0,"features":{"combos":false,"autoCombos":false,"enrichment":false,"diskCache":false,"mcpAutoEmit":false}}],[uri(&self.runtime.join("peers/selection.mjs"))?,{"providerID":PID,"modelID":TARGET,"efforts":overlay["tiers"],"rejected":tmp.join("rejected.flag")}]],"provider":overlay["provider"],"permission":"ask","enabled_providers":[PID]}),
         )?;
         let mut env = project_env;
+        let history = self.install.root().join("datos/historial");
+        install::folder(&history)?;
+        for file in ["opencode.db", "opencode.db-wal", "opencode.db-shm"] {
+            install::item(&history.join(file))?;
+        }
         for (k, v) in [
+            ("OPENCODE_DB", s(&history.join("opencode.db"))),
+            ("OPENCODE_DISABLE_PROJECT_CONFIG", "1".into()),
             ("OPENCODE_CONFIG", s(&conf)),
             ("OPENCODE_SERVER_PASSWORD", ocpass.clone()),
             ("OPENCODE_DATA_DIR", s(&data)),
@@ -446,13 +458,15 @@ impl Supervisor {
             cwd,
             &env,
         )?;
+        let mut job = job;
+        let mut api = api;
+        ready(&mut job, &mut api, path)?;
         self.services.push(Service {
-            job,
+            job: std::sync::Arc::new(job),
             api,
             healthy: false,
         });
         let svc = self.services.last_mut().unwrap();
-        ready(&mut svc.job, &mut svc.api, path)?;
         svc.healthy = true;
         self.event(format!("{role}: listener propio y respuesta comprobados"));
         Ok(())
@@ -480,9 +494,60 @@ impl Supervisor {
         self.event("Turno sintético completado".into());
         Ok(())
     }
+    /// El cliente de ensayo pasa por el mismo origen que WebView2. Nunca se escribe
+    /// el ticket en argv, en el informe ni en una URL fuera de loopback.
+    pub fn test_workspace(&mut self, project: &Path) -> Result<()> {
+        let node = self.runtime.join(NODE);
+        let mut session = String::new();
+        for recovery in [false, true] {
+            self.start()?;
+            let before = self.owned_pids()?;
+            let url = self.open_workspace(project)?.launch.clone();
+            if before != self.owned_pids()? {
+                return Err("Abrir la vista cambió los procesos gestionados".into());
+            }
+            let tmp = self
+                .install
+                .temporary()
+                .join(self.profile.as_ref().unwrap());
+            let script = tmp.join("workspace-ci.mjs");
+            fs::write(&script, include_str!("workspace-ci.mjs")).safe()?;
+            let spec = Spec {
+                exe: node.clone(),
+                args: vec![s(&script)],
+                input: json!({"url":url,"directory":s(project),"session":session}).to_string(),
+            };
+            let mut client = Job::captured(spec, &tmp, &environment(&tmp.join("ci"), &node)?)?;
+            let (ok, out) = client.wait(Duration::from_secs(165))?;
+            if !ok {
+                let stage = out
+                    .trim()
+                    .split_whitespace()
+                    .find(|s| {
+                        s.starts_with("CI_")
+                            && s.bytes().all(|b| b.is_ascii_uppercase() || b == b'_')
+                    })
+                    .unwrap_or("CI_CLIENTE");
+                return Err(format!("Workspace: {stage}"));
+            }
+            if !recovery {
+                session = out.trim().to_owned();
+                if !session.starts_with("ses_")
+                    || !session
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'_')
+                {
+                    return Err("Falta sesión de ensayo".into());
+                }
+            }
+            self.stop()?;
+        }
+        Ok(())
+    }
     pub fn stop(&mut self) -> Result<()> {
+        self.workspace.take();
         let mut err = None;
-        while let Some(mut svc) = self.services.pop() {
+        while let Some(svc) = self.services.pop() {
             let name = ROLES[self.services.len()];
             if let Err(e) = svc.job.stop() {
                 err = Some(e)
@@ -490,7 +555,7 @@ impl Supervisor {
                 self.event(format!("{name}: Job vacío"));
             }
         }
-        if let Some(mut j) = self.fixture.take() {
+        if let Some(j) = self.fixture.take() {
             if let Err(e) = j.stop() {
                 err = Some(e)
             } else {

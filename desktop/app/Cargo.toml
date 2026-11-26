@@ -1,6 +1,6 @@
 [package]
 name = "ai-stack-desktop"
-version = "0.0.2-dev"
+version = "0.0.3-dev"
 edition = "2021"
 publish = false
 
@@ -9,7 +9,8 @@ default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 
 [dependencies]
-tauri = "=2.10.3"
+tauri = {version = "=2.10.3", features = ["unstable"]}
+windows = {version = "=0.61.1", features = ["Win32_UI_Shell", "Win32_System_Com"]}
 w1-supervisor = { path = "../supervisor" }
 windows-sys = { version = "0.61", features = ["Win32_UI_WindowsAndMessaging"] }
 

@@ -1,14 +1,36 @@
-type Command = 'estado' | 'ubicacion' | 'progreso' | 'preparar' | 'iniciar' | 'detener' | 'probar';
+type Command = 'estado' | 'ubicacion' | 'progreso' | 'preparar' | 'iniciar' | 'detener' | 'probar' | 'elegir' | 'abrir' | 'vista';
 interface Row { name: string; version: string; active: boolean; healthy: boolean; metrics: [number, number] | null; output_bytes: number }
 interface Status { preparation: string; ready: boolean; services: Row[]; events: string[]; error: string | null }
 interface Progress { component: string; stage: string; completed: number; stages: number; bytes: number; total_bytes: number | null }
-declare global { interface Window { __TAURI__: { core: { invoke<T>(cmd: Command): Promise<T> } } } }
-const invoke = <T>(cmd: Command) => window.__TAURI__.core.invoke<T>(cmd);
+declare global { interface Window { __TAURI__: { core: { invoke<T>(cmd: Command, args?:object): Promise<T> } } } }
+const invoke = <T>(cmd: Command,args?:object) => window.__TAURI__.core.invoke<T>(cmd,args);
 const el = (id: string) => document.getElementById(id)!;
 const button = (id: string) => el(id) as HTMLButtonElement;
 const bar = (id: string) => el(id) as HTMLProgressElement;
 const mib = (bytes: number) => (bytes / 1048576).toFixed(1);
 let busy: Command | null = null, last: Status | null = null;
+let view='workspace';
+const tabs=Array.from(document.querySelectorAll<HTMLButtonElement>('[data-view]'));
+async function show(name:string){
+  view=name;
+  await invoke('vista',{visible:name==='workspace'});
+  for(const tab of tabs){el(tab.dataset.view!).hidden=tab.dataset.view!==view;tab.setAttribute('aria-current',String(tab.dataset.view===view));}
+}
+for(const tab of tabs)tab.onclick=()=>void show(tab.dataset.view!);
+el('manage').onclick=()=>void show('stack');
+let recent:string[]=[];
+try {const stored:unknown=JSON.parse(localStorage.getItem('projects')||'[]'); if(Array.isArray(stored))recent=stored.filter(p=>typeof p==='string').slice(0,16);}catch{}
+function projects(){el('recent').replaceChildren(...recent.map(path=>{const li=document.createElement('li'),b=document.createElement('button');b.textContent=path;b.onclick=()=>void openProject(path);li.append(b);return li;}));}
+async function openProject(path?:string){
+  if(busy)return;
+  if(!last?.services.every(s=>s.healthy)){await show('stack');el('feedback').textContent='Prepare e inicie el stack antes de abrir un proyecto.';return;}
+  busy='abrir';controls();
+  try {const carpeta=path??await invoke<string|null>('elegir'); if(!carpeta)return;
+    el('feedback').textContent='Abriendo la interfaz local de OpenCode…';
+    await invoke('abrir',{carpeta}); await show('workspace');recent=[carpeta,...recent.filter(p=>p!==carpeta)].slice(0,16);localStorage.setItem('projects',JSON.stringify(recent));projects();el('feedback').textContent='';
+  }catch(e){el('feedback').textContent=String(e);}finally{busy=null;controls();}
+}
+for(const id of ['choose','add'])el(id).onclick=()=>void openProject();projects();
 
 function controls() {
   const active = last?.services.some(s => s.active);

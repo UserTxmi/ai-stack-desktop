@@ -1,7 +1,7 @@
 {
-  "productName":"AI Stack Desktop", "version":"0.0.2-dev", "identifier":"dev.userTxmi.aistack.demo",
+  "productName":"AI Stack Desktop", "version":"0.0.3-dev", "identifier":"dev.userTxmi.aistack.demo",
   "build":{"frontendDist":"../frontend/dist"},
-  "app":{"withGlobalTauri":true,"windows":[{"label":"main","create":false,"title":"AI Stack Desktop · Demo W1","width":820,"height":720,"minWidth":560,"minHeight":460}],
-    "security":{"capabilities":[{"identifier":"demo-local","windows":["main"],"permissions":[]}],"csp":"default-src 'self'; script-src 'self'; style-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'"}},
+  "app":{"withGlobalTauri":true,"windows":[{"label":"main","create":false,"title":"AI Stack Desktop · Workspace","width":1120,"height":800,"minWidth":640,"minHeight":480}],
+    "security":{"capabilities":[{"identifier":"shell-local","webviews":["main"],"permissions":["allow-ubicacion","allow-progreso","allow-estado","allow-preparar","allow-iniciar","allow-detener","allow-probar","allow-elegir","allow-abrir","allow-vista"]}],"csp":"default-src 'self'; script-src 'self'; style-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'"}},
   "bundle":{"active":false,"icon":["build/desktop.ico"]}
 }

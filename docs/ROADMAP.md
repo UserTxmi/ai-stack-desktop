@@ -9,12 +9,15 @@
 | 1B-CI · aprobada | W1 corregido, sin cambios de versiones. | [Evidencia antes y después](PHASE1B_CI_REPORT.md#revisión-de-bloqueos). Conservar pruebas de retirada. |
 | 1B-Desktop · pendiente | Windows 11 x64 desechable, comparación UI/PTY, permisos, cierre forzado/logout y rendimiento prolongado. | Adjuntar resultados y decisión D1. |
 | 2A · aprobada para alcance experimental | EXE de desarrollo, supervisor Rust y frontend TypeScript; proveedor demo sin cuentas. | [Prueba básica del responsable en Windows 11 e informe separado de CI](PHASE2A_REPORT.md). No cierra 1B-Desktop. |
-| 2B · entregada, prueba interactiva pendiente | ZIP x64 `0.0.2-dev`, carpeta portátil elegida al extraer, preparación, diagnóstico y recuperación desde Tauri. | [Informe 2B](PHASE2B_REPORT.md): CI en Windows Server aprobada con los runtimes instalados por el EXE. Siguiente paso: [prueba manual Windows 11](../desktop/PROBAR.md). |
+| 2B · prueba interactiva básica aprobada | ZIP x64 `0.0.2-dev`, preparación y recuperación desde Tauri. | [Informe 2B](PHASE2B_REPORT.md): CI en Windows Server y confirmación básica por el usuario en Windows 11. |
+| 2C · workspace portable | OpenCode oficial local, proyectos y sesiones sobre el servidor supervisado, sólo proveedor sintético. | [Informe y estado de validación](PHASE2C_REPORT.md). |
 | 2 · núcleo Windows | Una ventana propia, ciclo de vida por usuario, carpetas con ACL, diagnóstico mínimo, recuperación y bandeja; instalar carga útil privada de ensayo. | T1/T2/T6, incluida salida tras crash y coexistencia con procesos ajenos. No habilitar OAuth antes de pasar aislamiento. |
 | 3 · proveedores y modelos | Aprovisionar gateway con IDs gestionados; autenticación autorizada, rotación/revocación y catálogo transaccional por conexión. | T3/T4 de extremo a extremo y pruebas limitadas consentidas por proveedor; publicar matriz de capacidades, esfuerzo y límites. |
 | 4 · workspace y recursos | Integrar UI OpenCode, sesiones, eventos, proyectos y extensiones confiables. Perfiles WebView y barreras de seguridad. | T5, T6 y T7 prolongada con informe reproducible y presupuestos de recursos acordados; ningún recorte funcional usado como optimización. |
 | 5 · distribución candidata | Build Windows reproducible, dependencias cerradas, firma y SBOM, EXE NSIS, migración, actualización y desinstalación. | T1, T8, T9 en máquinas limpias; simulacro de rollback con datos y restauración tras corte. Avisos offline, revisión de términos y plan de soporte. |
 | 6 · piloto y mantenimiento | Piloto voluntario x64, diagnósticos revisables, canal de prueba antes de estable. Actualizar una versión upstream por experimento y promover solo conjuntos calificados. | Regresiones de contrato y de rendimiento pasan antes de promoción. Ampliar a ARM64 u otras builds solo con artefactos, ABI, equipo y resultados equivalentes. |
+
+**Criterio obligatorio de fase 5:** entregar dos EXE diferenciados: instalador clásico (tipo Inno Setup o NSIS) y aplicación principal. El asistente permite seleccionar ubicación, prepara dependencias automáticamente con barra de progreso, crea accesos al escritorio y al menú Inicio, ofrece desinstalador y abre la aplicación instalada. No se implementa en 2C.
 
 ### Registro de riesgos abiertos
 
