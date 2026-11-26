@@ -6,6 +6,7 @@ WeakMap upstream acredita QUEUE_TIMEOUT, devolver el error de cola con no-replay
 Los dos grafos de Turbopack tienen distintos IDs y nombres minificados.
 """
 import hashlib
+import json
 from pathlib import Path
 
 CHUNKS = {
@@ -51,5 +52,9 @@ def apply_to(dist):
         out=out.replace(leg,leg+',queueErrors='+imported).replace(catch,
             f'catch({exc}){{if(queueErrors.x({exc})?.code===queueErrors.L)throw {exc};'+catch.split('{',1)[1])
         staged.append((path,out.encode()))
+    manifest = json.loads((Path(__file__).resolve().parents[2]/'desktop/w1.json').read_bytes())
+    for path,content in staged:
+        if hashlib.sha256(content).hexdigest() != manifest['package/dist/.build/next/server/chunks/'+path.name]:
+            raise ValueError('Resultado del parche distinto del W1 revisado')
     for path,content in staged:
         path.write_bytes(content)

@@ -1,4 +1,4 @@
-name: Windows W1 · fase 1B-CI
+name: Windows x64 · Desktop 2A y regresión W1
 on:
   workflow_dispatch:
     inputs:
@@ -14,6 +14,8 @@ on:
       - 'experiments/phase1/*.py'
       - 'experiments/phase1/*.json'
       - 'experiments/phase1/peers/**'
+      - 'desktop/**'
+      - '!desktop/**/*.md'
 
 permissions:
   contents: read
@@ -24,13 +26,13 @@ concurrency:
 jobs:
   laboratorio:
     runs-on: windows-2025
-    timeout-minutes: 30
+    timeout-minutes: 50
     defaults:
       run:
         shell: pwsh
     env:
       PYTHONUTF8: '1'
-      SUITE: ${{ inputs.suite || 'focal' }}
+      SUITE: ${{ inputs.suite || 'completa' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (node24)
         with:
@@ -39,6 +41,26 @@ jobs:
         run: |
           Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture
           py -3.12 -V
+      - name: Compilar frontend TypeScript
+        working-directory: desktop/frontend
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+      - name: Caché de compilación (sólo crates y target, sin perfiles)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            desktop/target
+          key: desktop-msvc-${{ runner.os }}-${{ hashFiles('desktop/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: desktop-msvc-${{ runner.os }}-${{ hashFiles('desktop/Cargo.lock') }}-
+      - name: Prueba unitaria de puerto ajeno y compilación EXE MSVC x64
+        working-directory: desktop
+        run: |
+          cargo test --release --locked -p w1-supervisor
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo build --locked --release -p ai-stack-desktop
       - name: Caché limitada a descargas públicas verificables
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 (node24)
         with:
@@ -80,6 +102,34 @@ jobs:
       - name: Reducir resultados y métricas a campos públicos
         if: ${{ !cancelled() }}
         run: py -3.12 -B experiments/phase1/ci_report.py
+      - name: Ensayar backend del EXE con W1 y cierre verificado
+        if: ${{ success() && env.SUITE == 'completa' }}
+        run: |
+          Copy-Item desktop/target/release/ai-stack-desktop.exe .
+          $p = Start-Process -FilePath .\ai-stack-desktop.exe -ArgumentList '--prueba-backend' -PassThru
+          if (-not $p.WaitForExit(360000)) { $p.Kill(); throw 'Plazo del backend' }
+          if (Test-Path backend.txt) { Get-Content backend.txt }
+          if ($p.ExitCode -ne 0) { throw "Backend: $($p.ExitCode)" }
+      - name: Preparar artifact por lista permitida
+        if: ${{ success() && env.SUITE == 'completa' }}
+        run: |
+          $out = 'entrega'
+          New-Item -ItemType Directory "$out/desktop", "$out/experiments/phase1/peers" | Out-Null
+          Copy-Item ai-stack-desktop.exe,backend.txt,desktop/PROBAR.md,desktop/preparar.ps1 $out
+          Copy-Item desktop/w1.json "$out/desktop"
+          Copy-Item experiments/phase1/prepare.py,experiments/phase1/omni_queue_fix.py,experiments/phase1/versions.json "$out/experiments/phase1"
+          Copy-Item experiments/phase1/peers/*.mjs,experiments/phase1/peers/*.cjs,experiments/phase1/peers/*.json "$out/experiments/phase1/peers"
+          Copy-Item experiments/phase1/.lab/export/informe.json $out
+          $env:GITHUB_SHA | Set-Content "$out/commit.txt"
+          (Get-ChildItem $out -Recurse -File | ForEach-Object { "$((Get-FileHash $_.FullName).Hash)  $([IO.Path]::GetRelativePath((Resolve-Path $out).Path,$_.FullName))" }) | Set-Content "$out/SHA256SUMS.txt"
+      - name: EXE, preparación reproducible y evidencia
+        if: ${{ success() && env.SUITE == 'completa' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: AI-Stack-Desktop-0.0.1-dev-win-x64
+          path: entrega/
+          retention-days: 30
+          if-no-files-found: error
       - name: Guardar sólo informe sintético
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2 (node24)

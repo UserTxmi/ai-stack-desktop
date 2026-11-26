@@ -1,0 +1,16 @@
+[package]
+name = "ai-stack-desktop"
+version = "0.0.1-dev"
+edition = "2021"
+publish = false
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[dependencies]
+tauri = "=2.10.3"
+w1-supervisor = { path = "../supervisor" }
+
+[build-dependencies]
+tauri-build = "=2.5.6"

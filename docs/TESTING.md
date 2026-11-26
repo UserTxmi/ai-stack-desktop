@@ -1,5 +1,9 @@
 # Verificación: prototipo y calificación del producto
 
+### EXE 2A
+
+El push relevante ejecuta ahora la batería **completa** además de `cargo test --locked -p w1-supervisor`, TypeScript y `cargo build --locked --release`. El caso de puerto ajeno usa un listener real fuera del Job y exige rechazo. El propio EXE con `--prueba-backend` debe confirmar integridad W1, arranque ordenado, catálogo efectivo, un turno sintético vía OpenCode, medidas Win32 y cierre con cero miembros en los Jobs. Sólo se publica el EXE si pasan backend y regresiones. [Procedimiento manual Windows 11](../desktop/PROBAR.md).
+
 ### Regresión de los tres bloqueos W1
 
 1. En CachyOS, con `bwrap`, Python y red para adquirir paquetes: `python3 -B experiments/phase1/linux_probe.py prepare` (una vez en `.lab` limpia). `python3 -B experiments/phase1/linux_probe.py probe` reproduce el comportamiento del tarball original; `python3 -B experiments/phase1/linux_probe.py fix` y de nuevo `probe` ensayan el backport. `fix` rechaza un runtime ya parcheado o distinto. El comando `probe` monta un root privado y red sólo loopback; no hereda HOME, servicios ni proyectos del host. Los grupos de procesos de esta reproducción **no** validan Jobs Win32.

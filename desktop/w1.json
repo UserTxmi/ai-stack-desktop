@@ -1,0 +1,15 @@
+{
+  "cpa/cli-proxy-api.exe": "528a7fc7cd37d546c5500e952578ab0e8afceca6bcf6d89a5e07e297767ee620",
+  "node/node-v24.21.0-win-x64/node.exe": "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32",
+  "oc/opencode.exe": "9a735720499bfaed8fc62db6f45123aebff929f33af885038068e8068da51cf5",
+  "package/dist/server-ws.mjs": "5820559356f810ee7b778494781fd16cea90d1704266846986f660f4c8a03b2f",
+  "package/node_modules/better-sqlite3/build/Release/better_sqlite3.node": "e21e5efd71fba66578e95b62554d9028064a80dafd7221bf8a8ef155de8d240a",
+  "peers/node_modules/@omniroute/opencode-plugin/dist/index.js": "6f2382181ba0f362f72f0fdcd755de3e169f30056507f6c8cb5a6cc5bf7614c5",
+  "peers/catalog.mjs": "b57a6a88d8bf72ed0f8e710f95834d076813cefaa1980122d8c3be7e31acd5ff",
+  "peers/selection.mjs": "361bf7020cf2355814d12cb2719e56ba1d324b5287e40c7beaa826859264dfe0",
+  "package/dist/.build/next/server/chunks/_07qw_x1vu-gul._.js": "ad708d84373918782e7b6b7994d655a482d1e408c730ecfdeb1ba1d3662a2bd3",
+  "package/dist/.build/next/server/chunks/_0iucxs0cnkog_._.js": "0105ef26d107fb1f33882fb13e889e70dbf342449143d4adb918631ade6500ae",
+  "package/dist/.build/next/server/chunks/_1h2t8vfsm40kc._.js": "2471d58cfe3831700e2410e5994b9f898b0cc1ddecd4cc3019ec0c2d6a1180bf",
+  "package/dist/.build/next/server/chunks/_0a_c1ny8f0j3_._.js": "3af7be6b6a3b84b16b495dcb8176f3335b822c0b8a7e8f98ca7ff1ef7e7ee69a",
+  "package/dist/.build/next/server/chunks/_2182e77j3cy7d._.js": "7ef7c09581b9648ebc1f31fc4b2b27dc6546f53fda2ca52a74522d63095096a4"
+}

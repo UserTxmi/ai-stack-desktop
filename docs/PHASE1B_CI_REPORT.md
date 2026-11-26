@@ -1,6 +1,6 @@
 # Fase 1B-CI · evidencia del 26-11-2026
 
-**Resultado actual: los tres bloqueos técnicos están cerrados en el laboratorio W1 corregido.** Pasaron la focal y la batería completa en Windows Server. Las dos primeras ejecuciones son la referencia **antes** de las correcciones; la [revisión de bloqueos](#revisión-de-bloqueos) distingue el paquete original del corregido. La aprobación formal de la fase y el paso a fase 2 requieren revisión explícita.
+**Cierre aprobado por el responsable para W1 corregido** tras revisar la focal 45888688401 y la completa 45889188564. Las dos primeras ejecuciones son la referencia **antes** de las correcciones; la [revisión de bloqueos](#revisión-de-bloqueos) distingue el paquete original del corregido. Se autoriza sólo el prototipo 2A. La validación interactiva 1B-Desktop sigue pendiente.
 
 ## Procedencia y alcance
 
