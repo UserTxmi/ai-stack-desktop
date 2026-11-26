@@ -170,6 +170,9 @@ def main():
             gateway.json('/api/resilience', {'requestQueue': requested}, method='PATCH')
             actual = gateway.json('/api/resilience')['requestQueue']
             check(all(actual.get(k) == v for k, v in requested.items()), 'presupuestos efectivos distintos')
+            gateway.json('/api/rate-limits', {'connectionId': conn, 'enabled': True})
+            protected = next(r for r in gateway.json('/api/rate-limits')['connections'] if r['connectionId'] == conn)
+            check(protected.get('enabled') and protected.get('rateLimitProtection'), 'limitador de conexión inactivo')
             key = gateway.json('/api/keys', {'name': 'fixture', 'allowedConnections': [conn]})['key']
             client.auth = 'Bearer '+key
             return {'cola_ms': actual['maxWaitMs'], 'ejecucion_configurada_ms': actual['executionMaxWaitMs']}
@@ -192,10 +195,13 @@ def main():
             for mode in ('normal', 'late', 'body', 'cancel'):
                 independent('gateway-'+mode, lambda m=mode: stream(client, target, m, provider))
         def queue_control():
-            # Sin cabeceras del proveedor durante 18 s, el primer trabajo aún ocupa el slot.
+            # Usar una respuesta NO incremental: un stream puede devolver cabeceras de keepalive
+            # del gateway antes de que termine el trabajo upstream. Medimos la cola, no el stream.
             offset = len(provider.events)
+            provider.mode = 'late'
+            payload = {'model':target, 'stream':False, 'messages':[{'role':'user','content':'retener slot'}]}
             with ThreadPoolExecutor(max_workers=1) as pool:
-                held = pool.submit(stream, client, target, 'late', provider)
+                held = pool.submit(client.json, '/v1/chat/completions', payload)
                 deadline = time.monotonic()+5
                 while not provider.since(offset) and time.monotonic() < deadline and not held.done():
                     time.sleep(.025)
@@ -210,7 +216,8 @@ def main():
                     raise RuntimeError('la segunda petición no expiró en cola')
                 waited = time.monotonic()-start
                 check(14 <= waited < 18, 'plazo de cola no observado')
-                held.result()
+                check(held.result()['choices'][0]['message']['content']=='LAB', 'primer trabajo no terminó')
+                check(sum(x[0]=='received' for x in provider.since(offset))==1, 'petición expirada llegó al receptor')
             return {'espera_s': round(waited, 3)}
         if args.only == 'all':
             independent('control-cola', queue_control)
@@ -241,6 +248,7 @@ def main():
             found = next((p for p in agent.json('/provider')['all'] if p['id'] == pid), {})
             model = found.get('models', {}).get(target)
             check(model is not None, 'plugin no entregó el modelo')
+            results['diagnostico-variantes'] = {'observadas':[s for s in ('low','medium','high','none','minimal','xhigh') if s in model.get('variants',{})]}
             check(set(model.get('variants', {})) == set(FIX['efforts']), 'variantes no coinciden con tiers de la fixture')
             return {'modelo': target, 'variantes': sorted(model['variants'])}
         if args.only == 'all':
@@ -252,6 +260,7 @@ def main():
                 'variant': effort, 'parts': [{'type': 'text', 'text': 'Devuelve LAB.'}]})
             check(not response['info'].get('error') and any('LAB' in p.get('text', '') for p in response['parts'] if p['type']=='text'), 'turno sin respuesta del fixture')
             received = [x[1] for x in provider.since(offset) if x[0]=='received']
+            results['diagnostico-'+effort] = {'recibidos':received}
             check(effort in received and not any(x not in (effort, None) for x in received), 'esfuerzo no llegó al receptor')
             return {'seleccion': effort, 'recibidos': received}
         if args.only == 'all':

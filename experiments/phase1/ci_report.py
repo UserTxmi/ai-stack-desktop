@@ -2,6 +2,7 @@
 import json
 import math
 import platform
+import re
 from pathlib import Path
 from prepare import LAB
 
@@ -12,9 +13,21 @@ def summary(run):
     tests, peaks = {}, {}
     file = run/'results.json'
     for k, v in (json.loads(file.read_text(encoding='utf8')) if file.exists() else {}).items():
+        if k in ('diagnostico-variantes','diagnostico-low','diagnostico-high'):
+            key = 'observadas' if k == 'diagnostico-variantes' else 'recibidos'
+            tests[k] = {key:[s for s in v.get(key,[]) if s in ('low','medium','high','none','minimal','xhigh',None)][:20]}
+            continue
         if k not in CASES or v.get('estado') not in ('aprobada','fallida'):
             continue
         tests[k] = {'estado':v['estado']}
+        if v['estado']=='fallida':
+            msg = v.get('error','')
+            tests[k]['clase'] = next((tag for tag, phrase in {
+                'cola_sin_expirar':'no expiró en cola','rechazo_no_demostrado':'rechazo no atribuible',
+                'modelo_ausente':'no entregó el modelo','tiers_distintos':'variantes no coinciden',
+                'esfuerzo_distinto':'esfuerzo no llegó','turno_sin_respuesta':'turno sin respuesta',
+                'presupuesto_no_observado':'plazo de cola no observado'}.items() if phrase in msg),'otro')
+            tests[k]['codigos'] = re.findall(r'HTTP [45]\d\d|RATE_LIMIT_(?:QUEUE|EXECUTION)_TIMEOUT',msg)[:3]
         for field in ('cabeceras_s','primer_contenido_s','total_s','espera_s','cola_ms','ejecucion_configurada_ms','linea'):
             n = v.get(field)
             if type(n) in (int,float) and math.isfinite(n) and n >= 0:
