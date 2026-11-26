@@ -1,5 +1,21 @@
 # Prototipo 2A · 0.0.1-dev
 
+**[Descargar el artefacto Windows x64](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45895323904/artifacts/15153592383)** · [CI completa](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45895323904) · [Instrucciones Windows 11](../desktop/PROBAR.md). Es el EXE de [`fdf33b7`](https://github.com/UserTxmi/ai-stack-desktop/commit/fdf33b7bc6458d449b595992e57cb753c2d48f7f). Retención del artefacto hasta **26-12-2026 21:13 UTC**. También se puede descargar con `gh run download 45895323904 --repo UserTxmi/ai-stack-desktop --name AI-Stack-Desktop-0.0.1-dev-win-x64 --dir W1`.
+
+### Evidencia del entregable
+
+- Windows Server 2025 Datacenter `10.0.26100`, AMD64, runner estándar. **Todos los pasos ejecutados y aprobados**, job de 11 min 35 s. Artefacto ZIP: 2 985 410 bytes. Descargado y cotejado: los **17 archivos** coinciden con el manifiesto. EXE PE32+ Windows GUI x86-64, 9 138 176 bytes; SHA-256 `72b17ed034fce9b264bbae1dc3b994b2d88877a589003020ae20f932c6f0c617`.
+- **Mismo EXE, backend sin ventana:** rechazo de puerto ajeno en prueba unitaria; integración nativa con los tres servicios sanos, modelo con sólo `low/high`, un turno completo hasta el proveedor sintético y parada verificada en orden inverso. `backend.txt` y `informe.json` permiten distinguir esa evidencia de las regresiones del laboratorio.
+- **Regresiones W1:** cola expiró en **15,140 s**, cero despachos vencidos y slot liberado. Principal `high`/título `low` y principal `low`/título `low`, cero solicitudes sin atribuir; `medium` rechazado. SSE tardío `late` primer contenido/fin 19,297/40,328 s; `body` 18,078/39,297 s. Cancelación aprobada en receptor.
+
+| Árbol propio del EXE, hasta completar el turno | Pico de compromiso del Job | CPU acumulada |
+|---|---:|---:|
+| CLIProxyAPI | 74,8 MiB | 0,30 s |
+| OmniRoute | 619,3 MiB | 12,13 s |
+| OpenCode | 917,2 MiB | 17,08 s |
+
+Los picos no tienen por qué ser simultáneos. No se midió la ventana, ni se probó interacción con WebView2; estos resultados **no cierran 1B-Desktop**.
+
 **Alcance.** 1B-CI aprobada exclusivamente para [W1 corregido en `921253e`](PHASE1B_CI_REPORT.md). Validación de escritorio Windows 11 pendiente. [Workflow](https://github.com/UserTxmi/ai-stack-desktop/actions/workflows/windows-w1.yml) y [procedimiento de prueba](../desktop/PROBAR.md).
 
 **Qué ejecuta el EXE.** `desktop/app` conecta cuatro comandos locales de Tauri a `desktop/supervisor`, sin rutas, puertos ni órdenes libres desde la webview. El supervisor verifica SHA-256 de los puntos de entrada, binarios, plugin, SQLite y cinco chunks. La preparación verifica archivos y locks publicados antes de instalar transitivas. No es una auditoría continua de cada dependencia en disco. Un bloqueo de archivo exclusivo impide dos propietarios de la demo. Perfiles nuevos por arranque bajo LocalAppData, entorno por lista permitida y permisos `ask`. El trabajador bloquea en stdin hasta entrar en su Job con cierre al perder el último handle. Cada sonda del supervisor comprueba listener y par TCP establecido antes de enviar claves; no sigue redirects ni usa proxy. Cierre inverso, comprobación de Jobs vacíos y limpieza del perfil. Sólo se conserva un anillo de eventos propios y el recuento de bytes de salida; sin transcribir stdout/stderr.
