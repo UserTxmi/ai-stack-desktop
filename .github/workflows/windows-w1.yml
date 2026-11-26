@@ -1,0 +1,80 @@
+name: Windows W1 · fase 1B-CI
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/windows-w1.yml'
+      - 'experiments/phase1/*.py'
+      - 'experiments/phase1/*.json'
+      - 'experiments/phase1/peers/**'
+
+permissions:
+  contents: read
+concurrency:
+  group: w1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  laboratorio:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Identificar sistema real y Python del runner
+        run: |
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture
+          py -3.12 -V
+      - name: Caché limitada a descargas públicas verificables
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            experiments/phase1/.lab/downloads/CLIProxyAPI*.zip
+            experiments/phase1/.lab/downloads/node-*.zip
+            experiments/phase1/.lab/downloads/better-sqlite3-*.tgz
+            experiments/phase1/.lab/downloads/opencode-plugin-*.tgz
+          key: w1-public-x64-${{ hashFiles('experiments/phase1/versions.json','experiments/phase1/peers/package-lock.json') }}
+      - name: Verificar y extraer binarios x64
+        id: bins
+        run: py -3.12 -B experiments/phase1/prepare.py --ci-stage binaries
+      - name: CPA y receptor sintético
+        run: py -3.12 -B experiments/phase1/run.py --hosted-ci --only cpa
+      - name: OpenCode independiente
+        if: ${{ !cancelled() && steps.bins.outcome == 'success' }}
+        run: py -3.12 -B experiments/phase1/run.py --hosted-ci --only oc
+      - name: Dependencias privadas y SQLite nativo
+        id: gateway
+        if: ${{ !cancelled() && steps.bins.outcome == 'success' }}
+        run: py -3.12 -B experiments/phase1/prepare.py --ci-stage gateway
+      - name: OmniRoute independiente
+        id: omni
+        if: ${{ !cancelled() && steps.gateway.outcome == 'success' }}
+        run: py -3.12 -B experiments/phase1/run.py --hosted-ci --only omni
+      - name: Catálogo del plugin publicado
+        if: ${{ !cancelled() && steps.gateway.outcome == 'success' }}
+        run: |
+          $runtime = 'experiments/phase1/.lab/runtime'
+          $node = (Get-ChildItem "$runtime/node" -Recurse -Filter node.exe).FullName
+          py -3.12 -B experiments/phase1/test_plugin.py $node "$runtime/peers"
+      - name: Cadena W1, esfuerzos, cola, streaming, cancelación y Jobs
+        if: ${{ success() }}
+        run: py -3.12 -B experiments/phase1/run.py --hosted-ci
+      - name: Reducir resultados y métricas a campos públicos
+        if: ${{ !cancelled() }}
+        run: py -3.12 -B experiments/phase1/ci_report.py
+      - name: Guardar sólo informe sintético
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: w1-informe-${{ github.run_id }}-${{ github.run_attempt }}
+          path: experiments/phase1/.lab/export/informe.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1

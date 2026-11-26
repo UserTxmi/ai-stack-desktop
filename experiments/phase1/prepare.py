@@ -73,10 +73,21 @@ def extract_zip(archive, directory):
 def main():
     opts = argparse.ArgumentParser()
     opts.add_argument('--inventory', action='store_true', help='verificar en disco sin ejecutar binarios')
+    opts.add_argument('--ci-stage', choices=['binaries', 'gateway'], help='etapas separadas en runner efímero')
     args = opts.parse_args()
     if not args.inventory:
         windows()
-    files = {a['id']: verified(a) for a in ART}
+    selected = [a for a in ART if not args.ci_stage or a['id'] != 'electron']
+    if args.ci_stage == 'binaries':
+        selected = [a for a in selected if a['id'] in ('node','oc','cpa')]
+    files = {a['id']: verified(a) for a in selected}
+    if not args.inventory and args.ci_stage != 'gateway':
+        RUNTIME.mkdir(parents=True, exist_ok=False)
+        for key in ('node', 'oc', 'cpa'):
+            extract_zip(files[key], RUNTIME / key)
+        (RUNTIME / 'binaries').touch()
+        if args.ci_stage == 'binaries':
+            return
     lock = json.loads(files['lock'].read_text(encoding='utf-8'))
     check(lock['packages']['node_modules/better-sqlite3']['integrity'] == next(a['sri'] for a in ART if a['id'] == 'sqlite'), 'SQLite no coincide con el lock')
     peers = json.loads((ROOT / 'peers/package-lock.json').read_text())['packages']
@@ -84,9 +95,7 @@ def main():
     print('Inventario íntegro:', ', '.join(files), flush=True)
     if args.inventory:
         return
-    RUNTIME.mkdir(parents=True, exist_ok=False)  # no mezclar ejecuciones parciales
-    for key in ('node', 'oc', 'cpa'):
-        extract_zip(files[key], RUNTIME / key)
+    check((RUNTIME/'binaries').is_file(), 'preparar antes los binarios')
     node, = (RUNTIME / 'node').rglob('node.exe')
     npm = node.parent / 'node_modules/npm/bin/npm-cli.js'
     env = env_for(LAB / 'build-home', node)

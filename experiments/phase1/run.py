@@ -1,4 +1,4 @@
-"""Ensayo de integración. Sólo en Windows aislado, después de quitarle la red externa."""
+"""Ensayo Windows: VM offline o runner efímero de CI con proveedor sintético."""
 import argparse
 import base64
 from concurrent.futures import ThreadPoolExecutor
@@ -47,12 +47,16 @@ def ready(job, worker, client, path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--isolated-offline', action='store_true', required=True)
+    modes = parser.add_mutually_exclusive_group(required=True)
+    modes.add_argument('--isolated-offline', action='store_true')
+    modes.add_argument('--hosted-ci', action='store_true')
     parser.add_argument('--interactive', action='store_true')
     parser.add_argument('--only', choices=['cpa', 'oc', 'omni', 'all'], default='all')
     args = parser.parse_args()
     windows()
-    check((RUNTIME/'prepared').is_file(), 'ejecutar primero prepare.py')
+    check(not args.hosted_ci or not args.interactive, 'CI no admite consola interactiva')
+    marker = 'binaries' if args.only in ('cpa','oc') else 'prepared'
+    check((RUNTIME/marker).is_file(), 'ejecutar primero prepare.py')
     run = LAB / ('run-' + secrets.token_hex(6))
     run.mkdir()
     project = run/'Proyecto de ensayo ñ'
@@ -230,7 +234,8 @@ def main():
         def oc_health():
             check(ready(jobs['oc'], worker, agent, '/global/health').get('healthy'), 'OpenCode no sano')
         test('OpenCode-salud', oc_health)
-        independent('UI-offline-assets', lambda: offline_ui(agent))
+        if args.isolated_offline:
+            independent('UI-offline-assets', lambda: offline_ui(agent))
 
         def models():
             found = next((p for p in agent.json('/provider')['all'] if p['id'] == pid), {})
