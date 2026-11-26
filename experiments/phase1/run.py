@@ -69,6 +69,8 @@ def main():
     else:
         marker = 'binaries' if args.only in ('cpa','oc') else 'prepared'
         check((RUNTIME/marker).is_file(), 'ejecutar primero prepare.py')
+    # La preparación del EXE escribe en su propia raíz; el laboratorio crea la suya.
+    LAB.mkdir(parents=True, exist_ok=True)
     run = LAB / ('run-' + secrets.token_hex(6))
     run.mkdir()
     project = run/'Proyecto de ensayo ñ'
