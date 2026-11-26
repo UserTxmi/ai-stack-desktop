@@ -1,5 +1,7 @@
 # Instrucciones del proyecto
 
+**Revisión 2C:** el usuario aprobó la prueba interactiva básica de 2B y autorizó `0.0.3-dev`: workspace local oficial con proveedor sintético, servidor supervisado y ZIP portable en Actions. [Evidencia 2C](docs/PHASE2C_REPORT.md). El instalador definitivo y 1B-Desktop siguen fuera de este alcance.
+
 - Trabajar y documentar en español. El estado del producto, sus contratos y sus decisiones viven en `docs/`; comenzar por `README.md`, `docs/DECISIONS.md` y `docs/ROADMAP.md`.
 - Fases 0 y 1A revisadas; 1B-CI aprobada sólo para W1 corregido. 2A aprobada para alcance experimental, con prueba interactiva básica en Windows 11. Autorizada 2B: EXE 0.0.2-dev y preparación desde la GUI, proveedor sintético y artefacto Actions estándar. 1B-Desktop sigue pendiente. En CachyOS usar `experiments/phase1/.lab/` para cachés y perfiles. No instalar globalmente, modificar el host, usar cuentas reales, lanzar el stack de referencia, publicar releases ni implementar producción. No confundir Windows Server con Windows 11.
 - La auditoría de Linux se limita a los ocho archivos enumerados en `docs/CURRENT_STACK.md`. Leerlos como texto; no seguir rutas a las que aluden, ejecutar scripts, consultar servicios, procesos, logs reales, credenciales, bases privadas o valores de claves. No alterar el host ni la infraestructura de referencia.

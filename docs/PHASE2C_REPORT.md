@@ -12,6 +12,16 @@
 
 ## Evidencia
 
+**[Descargar ZIP portable Windows x64](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45909962581/artifacts/15159299661)** · [Run completo aprobado](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45909962581) · [commit compilado `382afe0`](https://github.com/UserTxmi/ai-stack-desktop/commit/382afe0e91043497a39df4892991a776a55fdd08). Artefacto de Actions disponible con sesión iniciada hasta el **26-12-2026 23:27 UTC**.
+
+| Verificación | Resultado observado |
+|---|---|
+| Windows Server 2025 x64 (`10.0.26100`) | Job de 11 min 21 s; todos los pasos completados con éxito. Compilación MSVC y pruebas unitarias de recuperación y propiedad del listener. |
+| Entrada y API del workspace | Salud sin cookie rechazada; ticket de un uso, activo ausente y escritura de configuración bloqueados. Índice oficial y sus JS/CSS obtenidos localmente. Abrir la vista no añadió procesos gestionados. |
+| Conversación en carpeta con `ñ` | Creación de sesión, turno Plan/low, Build/high con delta SSE observado antes de enviar abort, mensaje abortado, permiso `bash` real rechazado y parte de herramienta en error. Tras cerrar y arrancar de nuevo se recuperaron ID, carpeta y mensajes. |
+| Regresiones | Preparación nueva, repetida, corrupta, incompleta, ACL denegada y cierre normal/forzado superados. CPA, OmniRoute, OpenCode y plugin aprobados por separado. En W1 el receptor recibió `low` y `high` para los turnos respectivos; título `low`, cero peticiones sin atribuir. Variante inválida rechazada. Cola agotada en 15,094 s sin segundo despacho y con slot liberado. |
+| Descarga independiente | ZIP **3 415 150 bytes**, SHA-256 `cd186ffe7f59c16bb5947c521baf708f1520273d04acb10964aa9b82ef52b8d4`, coincide con Actions. Diez entradas de `SHA256SUMS.txt` verificadas. EXE PE x86-64 **10 311 680 bytes**, SHA-256 `df797e7dd52cb8ea1b9ba4b0f90608d7acb16766cfc0694df48e3afb61020833`. |
+
 Desarrollo local: compilación TypeScript, comprobación Rust cruzada con tests para x64 Windows GNU y siete pruebas del receptor sintético aprobadas. [CI Windows](https://github.com/UserTxmi/ai-stack-desktop/actions/workflows/windows-w1.yml): compilación MSVC, preparación, cuatro Jobs, cliente del workspace atravesando la misma frontera que la vista, reapertura tras reinicio, suite W1 y empaquetado. El ZIP sólo se emite después de la suite completa. El resultado de un run no se infiere de esta descripción.
 
 **Windows 11 interactivo 2C: pendiente.** El cliente headless no comprueba renderizado, foco, selector de carpetas ni diálogos de WebView2. La única nueva aprobación de usuario registrada es la [prueba básica de 2B](PHASE2B_REPORT.md); no cierra 1B-Desktop.
