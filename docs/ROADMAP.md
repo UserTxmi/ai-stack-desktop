@@ -1,0 +1,29 @@
+# Hoja de ruta con criterios de paso
+
+**Orden aprobado:** preparar en Linux, medir en Windows aislado y decidir con la evidencia. Los scripts son instrumentos de ensayo, no la experiencia del usuario final.
+
+| Fase | Trabajo acotado tras autorización | Entrega y criterio para avanzar |
+|---|---|---|
+| 0 · revisada | Doce documentos y arquitectura revisados por el responsable de producto. | [D0–D6 con condiciones](DECISIONS.md). |
+| 1A · preparación autorizada | Inventario fijado, fixture SSE, scripts de adquisición, sondas del plugin, variantes, timeouts y Jobs, instrumentación y comparadores. Solo en el repositorio. | [Informe reproducible](PHASE1A_REPORT.md); diferenciar lo medido en Linux de las hipótesis Windows. |
+| 1B · validación pendiente | Ejecutar ensayos en Windows 11 x64 desechable, sin cuentas reales y sin salida externa durante inferencia. Probar cada binario antes del recorrido completo; comparar UI/PTY sobre la misma carga. | Adjuntar resultados, fallos, pins, catálogo, evidencia de esfuerzos, series y decisión D1. Sin NSIS de producto, migración ni actualizador. **Revisión explícita antes de fase 2.** |
+| 2 · núcleo Windows | Una ventana propia, ciclo de vida por usuario, carpetas con ACL, diagnóstico mínimo, recuperación y bandeja; instalar carga útil privada de ensayo. | T1/T2/T6, incluida salida tras crash y coexistencia con procesos ajenos. No habilitar OAuth antes de pasar aislamiento. |
+| 3 · proveedores y modelos | Aprovisionar gateway con IDs gestionados; autenticación autorizada, rotación/revocación y catálogo transaccional por conexión. | T3/T4 de extremo a extremo y pruebas limitadas consentidas por proveedor; publicar matriz de capacidades, esfuerzo y límites. |
+| 4 · workspace y recursos | Integrar UI OpenCode, sesiones, eventos, proyectos y extensiones confiables. Perfiles WebView y barreras de seguridad. | T5, T6 y T7 prolongada con informe reproducible y presupuestos de recursos acordados; ningún recorte funcional usado como optimización. |
+| 5 · distribución candidata | Build Windows reproducible, dependencias cerradas, firma y SBOM, EXE NSIS, migración, actualización y desinstalación. | T1, T8, T9 en máquinas limpias; simulacro de rollback con datos y restauración tras corte. Avisos offline, revisión de términos y plan de soporte. |
+| 6 · piloto y mantenimiento | Piloto voluntario x64, diagnósticos revisables, canal de prueba antes de estable. Actualizar una versión upstream por experimento y promover solo conjuntos calificados. | Regresiones de contrato y de rendimiento pasan antes de promoción. Ampliar a ARM64 u otras builds solo con artefactos, ABI, equipo y resultados equivalentes. |
+
+### Registro de riesgos abiertos
+
+| Riesgo / impacto | Responsable y decisión pendiente |
+|---|---|
+| Crítico: UI web hace fallback a internet; panel CPA se descarga aparte. Una página no fijada obtendría autoridad de su origen local. | Seguridad/desktop: exigir recursos locales verificados y ausencia de fallback en T1/T2; reevaluar Desktop oficial si no se puede garantizar. |
+| Crítico: plugin ofrece niveles inferidos o transforma un ID de combo, y el proveedor acepta la petición ignorando esfuerzo. | Integración: T4 con receptor de ensayo y contraste de capacidades por conexión. Usar solo rutas verificadas; si el plugin falla, separar fallo de upstream de política de producto. |
+| Alto: dos supervisores, exposición de controles de servicio de OmniRoute o reinicio tras logout. | Windows: T2/T6; escoger una autoridad y restringir operaciones alcanzables, no solo ocultar botones. |
+| Alto: ABI de `better-sqlite3`, selección de binario CPU, rutas Unicode/PTY y herramientas habitualmente usadas desde WSL. | Build/desktop: T1/T5 con perfil estándar; inventariar herramientas realmente necesarias y sus licencias. No prometer paridad ARM64. |
+| Alto: capas de configuración de OpenCode mezclan credenciales/permisos con otra instalación; plugins/MCP heredan secretos. | Seguridad: T2/T5/T8 con perfil ajeno y marcadores sintéticos; delimitar la confianza en código local y la propiedad de los datos. |
+| Alto: migración irreversible o plugin/activo se actualiza por fuera del conjunto. | Release: T8/T9; bloquear actualización si no existe snapshot consistente y ruta probada de retorno. |
+| Alto: autorización del proveedor o derechos de redistribuir activo/auxiliar desconocidos. | Producto/release: validar por proveedor, plan y artefacto; no anunciar ni incluir el elemento sin revisión. |
+| Medio/alto: CPU en reposo o crecimiento de RAM desconocidos en Windows. | Rendimiento: T7 con sesiones largas, contabilidad compartida y control A/B; presupuesto después de medir. |
+
+**? · Cierre de cada fase:** responsable adjunta evidencia filtrada, limitaciones y decisión; un fallo bloqueante genera investigación o cambio acotado, no un fork por defecto. Proponer un fork solo con reproducción, intento upstream, coste de mantenimiento y condición de retirada.

@@ -1,0 +1,14 @@
+{
+  "target": "win32-x64",
+  "artifacts": [
+    {"id":"cpa","version":"8.1.7","url":"https://github.com/router-for-me/CLIProxyAPI/releases/download/v8.1.7/CLIProxyAPI_8.1.7_windows_amd64.zip","sha256":"e28705a0ba0ee6485310270612f0214d9522bad7d2b3027272e9a935c27faccc","license":"MIT; LICENSE en ZIP","requires":[]},
+    {"id":"node","version":"24.21.0","url":"https://nodejs.org/dist/v24.21.0/node-v24.21.0-win-x64.zip","sha256":"158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541","license":"Node MIT + avisos de terceros del ZIP","requires":[]},
+    {"id":"oc","version":"1.19.6","url":"https://github.com/anomalyco/opencode/releases/download/v1.19.6/opencode-windows-x64.zip","sha256":"fa31c9ec0bac7611ab12699ef8e2fc4c173fb95ac977b09b189b255b8f559bcc","license":"MIT + dependencias incluidas","requires":[]},
+    {"id":"electron","version":"1.19.6","url":"https://github.com/anomalyco/opencode/releases/download/v1.19.6/opencode-desktop-win-x64.exe","sha256":"13da6af6d1db8b067378b1183c5d2de1433915dd5124482d94e5e348ec667735","license":"OpenCode MIT, Electron y terceros de Chromium","requires":["escritorio interactivo"]},
+    {"id":"omni","version":"3.8.54","url":"https://registry.npmjs.org/omniroute/-/omniroute-3.8.54.tgz","sri":"sha512-CwAq+cK1fm2EnWqHCvQObfR+ACAEbEGQvgOGf/Fe0HxWRPvBqLO3+8Kry852g+q65nLBavcUAx/3zgMNkNdhAQ==","license":"MIT + THIRD_PARTY_NOTICES.md","requires":["node","lock","sqlite"]},
+    {"id":"sqlite","version":"13.0.3","url":"https://registry.npmjs.org/better-sqlite3/-/better-sqlite3-13.0.3.tgz","sri":"sha512-RbOBxmLBG8uvFUc15X9+9SFemKcQ0WBuISBVkpuiaUB2qblC8UWlHEjdWVoZ8AdhSwmoEgsiXKfopX0CQxaACQ==","license":"MIT; prebuild win32-x64 incluido","requires":["node"]},
+    {"id":"plugin","version":"0.2.2","url":"https://registry.npmjs.org/@omniroute/opencode-plugin/-/opencode-plugin-0.2.2.tgz","sri":"sha512-4sA6KFTM4ySQkUwqFQqPrhK97F0agieemOSOR79nQ2Fw8oYSzTe8/uH84TQ/MxsLfoMT8YNJGNIk4l34bkcIgQ==","license":"MIT","requires":["peers/package-lock.json","oc"]},
+    {"id":"lock","version":"3.8.54","url":"https://raw.githubusercontent.com/cheaper-inference/OmniRoute/v3.8.54/package-lock.json","sha256":"4f645c9292135731b7d00c8ac6aea86f857e882812fce66aa461115554659016","license":"árbol de dependencias de OmniRoute; licencias por paquete","requires":["workspaces"]},
+    {"id":"workspaces","version":"3.8.54","url":"https://codeload.github.com/cheaper-inference/OmniRoute/tar.gz/1c880c5c95b3f0240d5e4c6c8f0947ec46b5d25e","sha256":"83d36c165d2a5e275cf4d358cbb2363499218f0e5de78b681e2dee6887b05479","license":"MIT y avisos de los workspaces (incluido lucide-license.txt)","requires":[]}
+  ]
+}

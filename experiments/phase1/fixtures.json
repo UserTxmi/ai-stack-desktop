@@ -1,0 +1,12 @@
+{
+  "model": "lab-reasoner",
+  "efforts": ["low", "high"],
+  "scenarios": {
+    "normal": {"headers_ms":0,"first_ms":0,"interval_ms":15,"chunks":3},
+    "late": {"headers_ms":18000,"first_ms":1000,"interval_ms":1000,"chunks":21},
+    "body": {"headers_ms":0,"first_ms":18000,"interval_ms":1000,"chunks":21},
+    "cancel": {"headers_ms":0,"first_ms":0,"interval_ms":250,"chunks":240},
+    "provider504": {"status":504},
+    "tools": {"headers_ms":0,"first_ms":0,"interval_ms":15,"chunks":3}
+  }
+}

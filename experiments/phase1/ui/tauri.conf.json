@@ -1,0 +1,8 @@
+{
+  "productName": "AI Stack UI Probe",
+  "version": "0.0.0",
+  "identifier": "test.local.aistack.uiprobe",
+  "build": {"frontendDist":"assets"},
+  "app": {"windows":[], "security":{"capabilities":[]}},
+  "bundle": {"active":false,"icon":["../.lab/ui-assets/lab.ico"]}
+}
