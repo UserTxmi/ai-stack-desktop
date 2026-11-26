@@ -6,16 +6,23 @@ import re
 from pathlib import Path
 from prepare import LAB
 
-CASES = set('CPA-perfil OmniRoute-salud gateway-aprovisionado catalogo-OmniRoute gateway-normal gateway-late gateway-body gateway-cancel control-cola OpenCode-salud plugin-efectivo turno-low turno-high metricas cierre-omni cierre-oc cierre-cpa'.split())
+CASES = set('CPA-perfil OmniRoute-salud gateway-aprovisionado catalogo-OmniRoute gateway-normal gateway-late gateway-body gateway-cancel control-cola OpenCode-salud plugin-efectivo turno-low turno-high variante-invalida metricas cierre-omni cierre-oc cierre-cpa'.split())
 
 
 def summary(run):
     tests, peaks = {}, {}
     file = run/'results.json'
     for k, v in (json.loads(file.read_text(encoding='utf8')) if file.exists() else {}).items():
+        if k=='diagnostico-cola':
+            tests[k]={field:v[field] for field in ('ejecutando','encoladas','receptor_segunda','ejecucion_ms','segundos','misma_clave','liberado') if type(v.get(field)) in (int,float,bool)}
+            tests[k]['admisiones_ms']=[ms for ms in v.get('admisiones_ms',[]) if type(ms)==int][:4]
+            continue
         if k in ('diagnostico-variantes','diagnostico-low','diagnostico-high'):
             key = 'observadas' if k == 'diagnostico-variantes' else 'recibidos'
             tests[k] = {key:[s for s in v.get(key,[]) if s in ('low','medium','high','none','minimal','xhigh',None)][:20]}
+            if k!='diagnostico-variantes':
+                tests[k]['titulos']=[s for s in v.get('titulos',[]) if s in ('low','high',None)][:20]
+                if type(v.get('sin_atribuir'))==int: tests[k]['sin_atribuir']=v['sin_atribuir']
             continue
         if k not in CASES or v.get('estado') not in ('aprobada','fallida'):
             continue

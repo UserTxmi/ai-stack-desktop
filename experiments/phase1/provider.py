@@ -17,6 +17,24 @@ class Provider(ThreadingHTTPServer):
         self.events = []
         self.lock = threading.Lock()
         self.stop = threading.Event()
+        self.held = threading.Event()
+        self.release = threading.Event()
+        self.requests = []
+
+    def classify(self, data):
+        # Sólo igualdad/presencia de marcadores de la fixture; no persistir mensajes ni ID de sesión.
+        roles = {m.get('role'): [] for m in data.get('messages', [])}
+        for m in data.get('messages', []):
+            text = m.get('content', '')
+            roles[m.get('role')].extend([text] if isinstance(text,str) else [p.get('text','') for p in (text or []) if isinstance(p,dict)])
+        users = roles.get('user', [])
+        for tag in ('held','waiting','low','high','invalid'):
+            if any('W1-TEST:'+tag+':END' in t for t in users):
+                title = any('Generate a title for this conversation:' in t for t in users) or any('You are a title generator.' in t for t in roles.get('system', []))
+                main = any('W1-MAIN:'+tag+':END' in t for t in roles.get('system', [])+roles.get('developer', []))
+                # ensureTitle reutiliza firstInfo, que puede contener el sistema del turno.
+                return tag, 'title' if title else 'main' if main else 'other'
+        return 'other','other'
 
     def record(self, kind, effort):
         with self.lock:
@@ -73,6 +91,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(400, {})
         p = FIX['scenarios'][self.server.mode]
         self.server.record('received', effort)
+        tag, role = self.server.classify(data)
+        with self.server.lock:
+            self.server.requests.append((tag,role,effort))
+        if tag == 'held':
+            self.server.held.set()
+            if not self.server.release.wait(18):
+                return self.reply(504, {'error':{'code':'fixture_barrier_timeout'}})
         if 'status' in p:
             return self.reply(p['status'], {'error': {'code': 'synthetic_provider_timeout'}})
         if self.server.stop.wait(p['headers_ms']/1000):

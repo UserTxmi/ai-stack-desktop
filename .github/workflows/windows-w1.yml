@@ -1,6 +1,12 @@
 name: Windows W1 · fase 1B-CI
 on:
   workflow_dispatch:
+    inputs:
+      suite:
+        type: choice
+        description: Alcance del ensayo
+        default: completa
+        options: [focal, completa]
   push:
     branches: [main]
     paths:
@@ -24,8 +30,9 @@ jobs:
         shell: pwsh
     env:
       PYTHONUTF8: '1'
+      SUITE: ${{ inputs.suite || 'focal' }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (node24)
         with:
           persist-credentials: false
       - name: Identificar sistema real y Python del runner
@@ -33,7 +40,7 @@ jobs:
           Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture
           py -3.12 -V
       - name: Caché limitada a descargas públicas verificables
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 (node24)
         with:
           path: |
             experiments/phase1/.lab/downloads/CLIProxyAPI*.zip
@@ -45,9 +52,10 @@ jobs:
         id: bins
         run: py -3.12 -B experiments/phase1/prepare.py --ci-stage binaries
       - name: CPA y receptor sintético
+        if: ${{ env.SUITE == 'completa' }}
         run: py -3.12 -B experiments/phase1/run.py --hosted-ci --only cpa
       - name: OpenCode independiente
-        if: ${{ !cancelled() && steps.bins.outcome == 'success' }}
+        if: ${{ !cancelled() && env.SUITE == 'completa' && steps.bins.outcome == 'success' }}
         run: py -3.12 -B experiments/phase1/run.py --hosted-ci --only oc
       - name: Dependencias privadas y SQLite nativo
         id: gateway
@@ -55,7 +63,7 @@ jobs:
         run: py -3.12 -B experiments/phase1/prepare.py --ci-stage gateway
       - name: OmniRoute independiente
         id: omni
-        if: ${{ !cancelled() && steps.gateway.outcome == 'success' }}
+        if: ${{ !cancelled() && env.SUITE == 'completa' && steps.gateway.outcome == 'success' }}
         run: py -3.12 -B experiments/phase1/run.py --hosted-ci --only omni
       - name: Catálogo del plugin publicado
         if: ${{ !cancelled() && steps.gateway.outcome == 'success' }}
@@ -65,13 +73,16 @@ jobs:
           py -3.12 -B experiments/phase1/test_plugin.py $node "$runtime/peers"
       - name: Cadena W1, esfuerzos, cola, streaming, cancelación y Jobs
         if: ${{ success() }}
-        run: py -3.12 -B experiments/phase1/run.py --hosted-ci
+        run: |
+          if ($env:SUITE -eq 'focal') { py -3.12 -B experiments/phase1/run.py --hosted-ci --focus }
+          else { py -3.12 -B experiments/phase1/run.py --hosted-ci }
+          exit $LASTEXITCODE
       - name: Reducir resultados y métricas a campos públicos
         if: ${{ !cancelled() }}
         run: py -3.12 -B experiments/phase1/ci_report.py
       - name: Guardar sólo informe sintético
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2 (node24)
         with:
           name: w1-informe-${{ github.run_id }}-${{ github.run_attempt }}
           path: experiments/phase1/.lab/export/informe.json

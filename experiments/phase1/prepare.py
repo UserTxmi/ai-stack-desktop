@@ -102,6 +102,8 @@ def main():
     omni = RUNTIME / 'package'
     with tarfile.open(files['omni']) as tar:
         tar.extractall(RUNTIME, filter='data')
+    from omni_queue_fix import apply_to
+    apply_to(omni/'dist')
     # npm ci enlaza tres workspaces; el paquete publicado omite dos de sus directorios.
     with tarfile.open(files['workspaces'], mode='r|gz') as tar:
         for item in tar:

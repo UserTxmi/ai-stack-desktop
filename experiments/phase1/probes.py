@@ -38,7 +38,7 @@ class Client:
             if not 200 <= r.status < 300:
                 # Conservar sólo códigos de error conocidos, nunca el cuerpo/headers.
                 text = r.read(16384).decode(errors='replace')
-                codes = re.findall(r'RATE_LIMIT_(?:QUEUE|EXECUTION)_TIMEOUT|STREAM_READINESS_TIMEOUT|synthetic_provider_timeout', text)
+                codes = re.findall(r'W1_UNSUPPORTED_VARIANT|RATE_LIMIT_(?:QUEUE|EXECUTION)_TIMEOUT|STREAM_READINESS_TIMEOUT|synthetic_provider_timeout', text)
                 raise RuntimeError(f'{path.split("?")[0]}: HTTP {r.status} {",".join(sorted(set(codes)))}')
             return c, r
         except BaseException:

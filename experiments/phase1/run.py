@@ -6,6 +6,7 @@ import contextlib
 import json
 from pathlib import Path
 import secrets
+import subprocess
 import socket
 import threading
 import time
@@ -45,12 +46,17 @@ def ready(job, worker, client, path):
     raise RuntimeError(f'no listo: {path} ({last})')
 
 
+def binaries():
+    return tuple(next((RUNTIME/key).rglob(name)) for key,name in (('node','node.exe'),('oc','opencode.exe'),('cpa','cli-proxy-api.exe')))
+
+
 def main():
     parser = argparse.ArgumentParser()
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument('--isolated-offline', action='store_true')
     modes.add_argument('--hosted-ci', action='store_true')
     parser.add_argument('--interactive', action='store_true')
+    parser.add_argument('--focus', action='store_true', help='sólo bloqueos, con sus prerrequisitos reales')
     parser.add_argument('--only', choices=['cpa', 'oc', 'omni', 'all'], default='all')
     args = parser.parse_args()
     windows()
@@ -77,9 +83,7 @@ def main():
             dump(run/'results.json', results)
             print(name, results.get(name, {}).get('estado'), flush=True)
 
-    node, = (RUNTIME/'node').rglob('node.exe')
-    oc, = (RUNTIME/'oc').rglob('opencode.exe')
-    cpa, = (RUNTIME/'cpa').rglob('cli-proxy-api.exe')
+    node, oc, cpa = binaries()
     sourcekey, cpakey, password, ocpass = [secrets.token_hex(24) for _ in range(4)]
     provider = Provider(sourcekey)
     threading.Thread(target=provider.serve_forever, daemon=True).start()
@@ -144,18 +148,22 @@ def main():
                        ENABLE_REQUEST_LOGS='false', CALL_LOG_PIPELINE_CAPTURE_STREAM_CHUNKS='false')
         reserved[1].close()
         omni = RUNTIME/'package/dist'
+        trace = run/'queue.jsonl'
+        omnienv['W1_QUEUE_TRACE'] = str(trace)
         def omni_health():
             ready(jobs['omni'], worker, gateway, '/healthz')
             return {'runtime': 'Node privado'}
         if args.only in ('omni', 'all'):
-            worker = jobs['omni'].launch([node, omni/'server-ws.mjs'], omni, omnienv)
+            worker = jobs['omni'].launch([node,'--require',RUNTIME/'peers/queue-trace.cjs',omni/'server-ws.mjs'], omni, omnienv)
             test('OmniRoute-salud', omni_health)
             if args.only == 'omni':
                 return
         client = Client(gateway.port)
         target = 'labcpa/'+MODEL
+        conn = None
 
         def configure():
+            nonlocal conn
             gateway.json('/api/auth/login', {'password': password})
             gateway.csrf = gateway.json('/api/auth/csrf')['token']
             node_id = gateway.json('/api/provider-nodes', {'name': 'CPA laboratorio', 'type': 'openai-compatible',
@@ -192,32 +200,54 @@ def main():
                 failures.append(name)
         if args.only == 'all':
             independent('catalogo-OmniRoute', catalog)
-            for mode in ('normal', 'late', 'body', 'cancel'):
+            for mode in (() if args.focus else ('normal', 'late', 'body', 'cancel')):
                 independent('gateway-'+mode, lambda m=mode: stream(client, target, m, provider))
         def queue_control():
             # Usar una respuesta NO incremental: un stream puede devolver cabeceras de keepalive
             # del gateway antes de que termine el trabajo upstream. Medimos la cola, no el stream.
-            offset = len(provider.events)
-            provider.mode = 'late'
-            payload = {'model':target, 'stream':False, 'messages':[{'role':'user','content':'retener slot'}]}
-            with ThreadPoolExecutor(max_workers=1) as pool:
+            offset = len(provider.requests)
+            provider.mode = 'normal'
+            payload = {'model':target, 'stream':False, 'messages':[{'role':'user','content':'W1-TEST:held:END'}]}
+            evidence = results['diagnostico-cola'] = {'ejecutando':0,'encoladas':0,'receptor_segunda':0}
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                trace_start = len(trace.read_text().splitlines()) if trace.exists() else 0
                 held = pool.submit(client.json, '/v1/chat/completions', payload)
-                deadline = time.monotonic()+5
-                while not provider.since(offset) and time.monotonic() < deadline and not held.done():
-                    time.sleep(.025)
-                check(provider.since(offset), 'primera petición no despachada')
+                check(provider.held.wait(5), 'primera petición no despachada')
                 start = time.monotonic()
+                waiting = pool.submit(client.json,'/v1/chat/completions',{**payload,'messages':[{'role':'user','content':'W1-TEST:waiting:END'}]})
                 try:
-                    client.json('/v1/chat/completions', {'model': target, 'stream': False,
-                                'messages': [{'role':'user','content':'cola'}]})
-                except RuntimeError as e:
-                    check('RATE_LIMIT_QUEUE_TIMEOUT' in str(e), 'rechazo no atribuible a la cola: '+str(e))
-                else:
-                    raise RuntimeError('la segunda petición no expiró en cola')
-                waited = time.monotonic()-start
+                    while not waiting.done() and time.monotonic()-start<18:
+                        state = gateway.json('/api/rate-limits')
+                        slot = next(r for r in state['connections'] if r['connectionId']==conn)
+                        overview=state['overview'].get(slot['provider']+':'+conn,{})
+                        if overview.get('executing')==1 and overview.get('queued')==1:
+                            evidence['misma_clave']=True
+                        pair=(slot.get('executing',0),slot.get('queued',0))
+                        timeline=evidence.setdefault('cambios',[])
+                        if not timeline or tuple(timeline[-1][1:])!=pair:
+                            timeline.append([round(time.monotonic()-start,2),*pair])
+                        for key,field in [('ejecutando','executing'),('encoladas','queued')]:
+                            evidence[key] = max(evidence[key],slot.get(field,0))
+                        time.sleep(.1)
+                    try: waiting.result(timeout=.2)
+                    except RuntimeError as e:
+                        evidence['segundos']=round(time.monotonic()-start,3)
+                        check('HTTP 503' in str(e) and 'RATE_LIMIT_QUEUE_TIMEOUT' in str(e), 'rechazo no atribuible a la cola: '+str(e))
+                    else: raise RuntimeError('la segunda petición no expiró en cola')
+                    waited = time.monotonic()-start
+                finally:
+                    provider.release.set()
+                    evidence['receptor_segunda'] = sum(r[0]=='waiting' for r in provider.requests[offset:])
                 check(14 <= waited < 18, 'plazo de cola no observado')
                 check(held.result()['choices'][0]['message']['content']=='LAB', 'primer trabajo no terminó')
-                check(sum(x[0]=='received' for x in provider.since(offset))==1, 'petición expirada llegó al receptor')
+                check(evidence['receptor_segunda']==0 and evidence['ejecutando']==1 and evidence['encoladas']==1 and evidence.get('misma_clave'), 'admisión y despacho no demostrados')
+                final=gateway.json('/api/rate-limits')['overview'][slot['provider']+':'+conn]
+                check(all(final[k]==0 for k in ('executing','running','queued')), 'slot no liberado')
+                rows=[json.loads(line) for line in trace.read_text().splitlines()[trace_start:]]
+                budgets=[r['ms'] for r in rows if r['kind']=='admission']
+                check(len(budgets)==2 and all(14000<=ms<=15000 for ms in budgets), 'admisiones o presupuestos inesperados')
+                evidence.update(admisiones_ms=budgets, ejecucion_ms=max([90000]+[r['ms'] for r in rows if r['kind']=='execution']),liberado=True)
+                check(sum(r[0]=='held' for r in provider.requests[offset:])==1 and not any(r[0]=='waiting' for r in provider.requests[offset:]), 'despacho tardío o duplicado')
             return {'espera_s': round(waited, 3)}
         if args.only == 'all':
             independent('control-cola', queue_control)
@@ -230,10 +260,13 @@ def main():
         pid = 'opencode-omniroute'
         if client.auth:
             dump(datadir/'auth.json', {pid: {'type': 'api', 'key': client.auth.removeprefix('Bearer ')}})
+            subprocess.run([node,RUNTIME/'peers/catalog.mjs'], input=json.dumps(dict(baseURL=gateway.origin,apiKey=client.auth[7:],target=target,file=str(conf))), text=True,env=ocenv,check=True)
+            overlay=json.loads(conf.read_bytes())
         dump(conf, {'permission': 'ask', 'enabled_providers': []} if args.only == 'oc' else {
                    'plugin': [[plugin.as_uri(), {'providerId': 'omniroute', 'baseURL': gateway.origin,
                    'autoSyncIntervalMs': 0, 'features': {'combos': False, 'autoCombos': False, 'enrichment': False,
-                   'diskCache': False, 'mcpAutoEmit': False}}]], 'permission': 'ask', 'enabled_providers': [pid]})
+                   'diskCache': False, 'mcpAutoEmit': False}}],[(RUNTIME/'peers/selection.mjs').as_uri(),{'providerID':pid,'modelID':target,'efforts':overlay['tiers'],'rejected':str(run/'rejected.flag')}]],
+                   'provider':overlay['provider'], 'permission': 'ask', 'enabled_providers': [pid]})
         ocenv.update(OPENCODE_CONFIG=str(conf), OPENCODE_SERVER_PASSWORD=ocpass, OPENCODE_DATA_DIR=str(datadir),
                      OPENCODE_DISABLE_AUTOUPDATE='1', OPENCODE_DISABLE_MODELS_FETCH='1')
         reserved[2].close()
@@ -241,7 +274,7 @@ def main():
         def oc_health():
             check(ready(jobs['oc'], worker, agent, '/global/health').get('healthy'), 'OpenCode no sano')
         test('OpenCode-salud', oc_health)
-        if args.isolated_offline:
+        if args.isolated_offline and not args.focus:
             independent('UI-offline-assets', lambda: offline_ui(agent))
 
         def models():
@@ -255,17 +288,29 @@ def main():
             independent('plugin-efectivo', models)
         def turn(effort):
             session = agent.json('/session', {})['id']
-            offset = len(provider.events)
+            offset = len(provider.requests)
             response = agent.json(f'/session/{session}/message', {'model': {'providerID': pid, 'modelID': target},
-                'variant': effort, 'parts': [{'type': 'text', 'text': 'Devuelve LAB.'}]})
+                'system': 'W1-MAIN:'+effort+':END', 'variant': effort, 'parts': [{'type':'text','text':'W1-TEST:'+effort+':END'}]})
             check(not response['info'].get('error') and any('LAB' in p.get('text', '') for p in response['parts'] if p['type']=='text'), 'turno sin respuesta del fixture')
-            received = [x[1] for x in provider.since(offset) if x[0]=='received']
-            results['diagnostico-'+effort] = {'recibidos':received}
-            check(effort in received and not any(x not in (effort, None) for x in received), 'esfuerzo no llegó al receptor')
+            records = provider.requests[offset:]
+            received = [v for tag,role,v in records if tag==effort and role=='main']
+            results['diagnostico-'+effort] = {'recibidos':received,'titulos':[v for tag,role,v in records if tag==effort and role=='title'],
+                                             'sin_atribuir':sum(tag!=effort or role not in ('title','main') for tag,role,v in records)}
+            check(received==[effort] and not results['diagnostico-'+effort]['sin_atribuir'], 'esfuerzo no llegó al receptor')
             return {'seleccion': effort, 'recibidos': received}
         if args.only == 'all':
             for effort in FIX['efforts']:
                 independent('turno-'+effort, lambda v=effort: turn(v))
+            def reject_variant():
+                sid=agent.json('/session',{})['id']
+                offset=len(provider.requests)
+                try:
+                    agent.json(f'/session/{sid}/message',{'model':{'providerID':pid,'modelID':target},'variant':'medium','parts':[{'type':'text','text':'W1-TEST:invalid:END'}]})
+                except RuntimeError as e:
+                    check('HTTP ' in str(e) and (run/'rejected.flag').read_bytes()==b'W1_UNSUPPORTED_VARIANT', 'rechazo no atribuible a selección')
+                else: raise RuntimeError('variante inválida aceptada')
+                check(not provider.requests[offset:], 'variante inválida despachada')
+            independent('variante-invalida',reject_variant)
         if args.interactive:
             print('Workspace local:', agent.origin, '| usuario opencode | contraseña efímera:', ocpass)
             print('Métricas:', run/'metrics.jsonl', flush=True)
@@ -275,7 +320,8 @@ def main():
                     print('Fixture:', cmd, flush=True)
         def metrics():
             check(not sampling_errors and all(job.sample() for job in jobs.values()), 'faltan muestras PSAPI')
-        independent('metricas', metrics)
+        if not args.focus:
+            independent('metricas', metrics)
     print('Evidencia:', run, flush=True)
     check(not failures, 'ensayos fallidos: '+', '.join(failures))
 
