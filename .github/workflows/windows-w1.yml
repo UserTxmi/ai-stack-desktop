@@ -72,7 +72,9 @@ jobs:
           key: w1-public-x64-${{ hashFiles('experiments/phase1/versions.json','experiments/phase1/peers/package-lock.json') }}
       - name: Verificar y extraer binarios x64
         id: bins
-        run: py -3.12 -B experiments/phase1/prepare.py --ci-stage binaries
+        run: |
+          Copy-Item desktop/preparar.ps1 .
+          .\preparar.ps1 -Etapa binaries
       - name: CPA y receptor sintético
         if: ${{ env.SUITE == 'completa' }}
         run: py -3.12 -B experiments/phase1/run.py --hosted-ci --only cpa
@@ -82,7 +84,7 @@ jobs:
       - name: Dependencias privadas y SQLite nativo
         id: gateway
         if: ${{ !cancelled() && steps.bins.outcome == 'success' }}
-        run: py -3.12 -B experiments/phase1/prepare.py --ci-stage gateway
+        run: .\preparar.ps1 -Etapa gateway
       - name: OmniRoute independiente
         id: omni
         if: ${{ !cancelled() && env.SUITE == 'completa' && steps.gateway.outcome == 'success' }}
@@ -120,6 +122,8 @@ jobs:
           Copy-Item experiments/phase1/prepare.py,experiments/phase1/omni_queue_fix.py,experiments/phase1/versions.json "$out/experiments/phase1"
           Copy-Item experiments/phase1/peers/*.mjs,experiments/phase1/peers/*.cjs,experiments/phase1/peers/*.json "$out/experiments/phase1/peers"
           Copy-Item experiments/phase1/.lab/export/informe.json $out
+          py -3.12 -B desktop/notices.py "$out/TERCEROS.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:GITHUB_SHA | Set-Content "$out/commit.txt"
           (Get-ChildItem $out -Recurse -File | ForEach-Object { "$((Get-FileHash $_.FullName).Hash)  $([IO.Path]::GetRelativePath((Resolve-Path $out).Path,$_.FullName))" }) | Set-Content "$out/SHA256SUMS.txt"
       - name: EXE, preparación reproducible y evidencia

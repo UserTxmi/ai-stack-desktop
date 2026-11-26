@@ -27,6 +27,7 @@ __pycache__/
 target/
 dist/
 build/
+desktop/app/gen/
 downloads/
 runtime/
 *.exe

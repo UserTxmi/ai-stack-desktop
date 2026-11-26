@@ -27,13 +27,23 @@ impl Api {
             .build()
             .safe()?;
         rt.block_on(async {
-            tokio::time::timeout(Duration::from_secs(12), async {
+            let timeout = if path.ends_with("/message") { 90 } else { 12 };
+            tokio::time::timeout(Duration::from_secs(timeout), async {
                 let socket =
                     tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, self.port))
                         .await
                         .safe()?;
-                if !job.owns(self.port, Some(socket.local_addr().safe()?.port()))? {
-                    return Err("Propiedad TCP no confirmada".into());
+                let peer = Some(socket.local_addr().safe()?.port());
+                // La tabla puede crecer entre las dos lecturas. Sólo reintentar la
+                // observación del mismo socket, nunca reproducir un POST.
+                for attempt in 0..5 {
+                    if job.owns(self.port, peer)? {
+                        break;
+                    }
+                    if attempt == 4 {
+                        return Err("Propiedad TCP no confirmada".into());
+                    }
+                    tokio::time::sleep(Duration::from_millis(25)).await;
                 }
                 let (mut tx, conn) = http1::handshake(TokioIo::new(socket)).await.safe()?;
                 tokio::spawn(conn);
