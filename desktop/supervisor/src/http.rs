@@ -27,7 +27,13 @@ impl Api {
             .build()
             .safe()?;
         rt.block_on(async {
-            let timeout = if path.ends_with("/message") { 90 } else { 12 };
+            // /provider inicializa el proyecto y carga plugins en frío. run.py usa
+            // el plazo de operación de 90 s, distinto de una sonda de salud.
+            let timeout = if path == "/provider" || path.ends_with("/message") {
+                90
+            } else {
+                12
+            };
             tokio::time::timeout(Duration::from_secs(timeout), async {
                 let socket =
                     tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, self.port))
@@ -107,7 +113,18 @@ impl Api {
                 serde_json::from_slice(&data).safe()
             })
             .await
-            .map_err(|_| "Plazo HTTP agotado".to_owned())?
+            .map_err(|_| {
+                format!(
+                    "Plazo HTTP de {timeout} s agotado ({})",
+                    if path == "/provider" {
+                        "catálogo OpenCode"
+                    } else if path.ends_with("/message") {
+                        "turno"
+                    } else {
+                        "sonda o gestión"
+                    }
+                )
+            })?
         })
     }
     pub fn provision(&mut self, job: &Job, cpa: &Api, password: &str) -> Result<String> {

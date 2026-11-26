@@ -395,6 +395,8 @@ impl Supervisor {
         )?;
         let a = &mut self.services[2];
         healthy(a, 2)?;
+        self.event("OpenCode: salud autenticada; cargando catálogo del proyecto".into());
+        let a = &mut self.services[2];
         let providers = a.api.request(&a.job, "GET", "/provider", Value::Null)?;
         let variants = providers["all"]
             .as_array()
