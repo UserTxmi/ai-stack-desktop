@@ -5,7 +5,8 @@
 | Fase | Trabajo acotado tras autorización | Entrega y criterio para avanzar |
 |---|---|---|
 | 0 · revisada | Doce documentos y arquitectura revisados por el responsable de producto. | [D0–D6 con condiciones](DECISIONS.md). |
-| 1A · preparación autorizada | Inventario fijado, fixture SSE, scripts de adquisición, sondas del plugin, variantes, timeouts y Jobs, instrumentación y comparadores. Solo en el repositorio. | [Informe reproducible](PHASE1A_REPORT.md); diferenciar lo medido en Linux de las hipótesis Windows. |
+| 1A · aprobada | Inventario fijado, fixture SSE, scripts de adquisición, sondas del plugin, variantes, timeouts y Jobs, instrumentación y comparadores. | [Informe reproducible](PHASE1A_REPORT.md). |
+| 1B-CI · en validación | Runner estándar Windows Server, perfiles efímeros, sin cuentas reales. Se conserva W1. | [Evidencia CI](PHASE1B_CI_REPORT.md), clasificar omitido/fallo/éxito por prueba. |
 | 1B · validación pendiente | Ejecutar ensayos en Windows 11 x64 desechable, sin cuentas reales y sin salida externa durante inferencia. Probar cada binario antes del recorrido completo; comparar UI/PTY sobre la misma carga. | Adjuntar resultados, fallos, pins, catálogo, evidencia de esfuerzos, series y decisión D1. Sin NSIS de producto, migración ni actualizador. **Revisión explícita antes de fase 2.** |
 | 2 · núcleo Windows | Una ventana propia, ciclo de vida por usuario, carpetas con ACL, diagnóstico mínimo, recuperación y bandeja; instalar carga útil privada de ensayo. | T1/T2/T6, incluida salida tras crash y coexistencia con procesos ajenos. No habilitar OAuth antes de pasar aislamiento. |
 | 3 · proveedores y modelos | Aprovisionar gateway con IDs gestionados; autenticación autorizada, rotación/revocación y catálogo transaccional por conexión. | T3/T4 de extremo a extremo y pruebas limitadas consentidas por proveedor; publicar matriz de capacidades, esfuerzo y límites. |

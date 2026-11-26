@@ -1,5 +1,7 @@
 # Verificación: prototipo y calificación del producto
 
+**1B-CI:** ejecutar el laboratorio existente con `--hosted-ci` en Windows Server x64. Saltar la afirmación de UI offline (el runner tiene red); no usar `--isolated-offline`. Registrar salud por proceso, Jobs, SQLite, catálogo, variantes observadas en receptor, streaming, cancelación y regresión de cola. La política de diagnóstico y los resultados están en [CI](CI.md) e [informe 1B-CI](PHASE1B_CI_REPORT.md).
+
 **1A/1B: solo perfiles nuevos y cuentas sintéticas.** La matriz ejecutable E1–E12, los comandos y el estado están en [Informe 1A](PHASE1A_REPORT.md); la comparación interactiva en [Protocolo A/B](UI_COMPARISON.md). El prototipo usa ZIP, tarballs y binarios privados. `prepare.py` comprueba procedencia e integridad y hace una consulta SQLite en memoria; no prueba instalación del producto. `run.py` termina con código no cero ante fallo. Casos no alcanzados por fallo anterior son *no ejecutados*, nunca aprobados. Guardar JSON de resultados y métricas en Windows antes de destruir la VM; no exportar perfiles ni credenciales de ensayo.
 
 **Producto posterior:** T1 de instalación EXE y T8/T9 de entrega son criterios de fase 5; T2–T7 amplían los ensayos preliminares en sus fases respectivas. Ningún instalador NSIS ni actualización, firma, migración o rollback completos son exigibles en fase 1. El escenario con cuentas autorizadas reales de la tabla requiere autorización futura.

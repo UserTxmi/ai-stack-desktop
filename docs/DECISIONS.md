@@ -13,3 +13,5 @@
 | D6 · aceptada | Optimizar con mediciones reales de proceso/árbol y sesiones comparables. | Sin presupuesto Windows sin medir; no reducir contexto, permisos ni capacidades del agente para mejorar la cifra. |
 
 **Candidato experimental W1 (no baseline de producción):** CPA 8.1.7, OmniRoute 3.8.54, Node 24.21.0, OpenCode 1.19.6 y plugin 0.2.2. Motivo, comparación y límites de evidencia en el [informe 1A](PHASE1A_REPORT.md). Ninguna modificación de las versiones Linux. **Fase 2 bloqueada hasta revisión explícita de 1B.**
+
+**Revisión posterior · 1A aprobada:** se autoriza ejecutar W1 en GitHub Actions, con CachyOS como entorno de desarrollo. Por instrucción corregida del responsable, el repositorio `UserTxmi/ai-stack-desktop` es **público**. El runner estándar `windows-2025` permite calificar rutas headless, no WebView2 offline, escritorio ni soporte final de Windows 11. Las evidencias públicas se limitan a [CI](CI.md); no hay distribución de binarios.

@@ -1,6 +1,6 @@
-# AI Stack Desktop · laboratorio de fase 1A
+# AI Stack Desktop · validación Windows de fase 1B-CI
 
-**Estado: fase 0 revisada; preparación de 1A.** El [informe 1A](docs/PHASE1A_REPORT.md) contiene evidencias y comandos para la futura ejecución en Windows. El objetivo final es instalar un solo EXE por usuario y trabajar desde una ventana de Windows: conectar una cuenta autorizada, elegir un modelo y continuar una sesión de OpenCode. Todavía no hay aplicación de producción ni instalador.
+**Estado: fase 1A aprobada.** [Resultados Windows Server](docs/PHASE1B_CI_REPORT.md) · [Guía CI](docs/CI.md) · [Laboratorio y ensayos Windows 11 pendientes](docs/PHASE1A_REPORT.md). El objetivo final es instalar un solo EXE por usuario y trabajar desde una ventana de Windows: conectar una cuenta autorizada, elegir un modelo y continuar una sesión de OpenCode. Todavía no hay aplicación de producción ni instalador.
 
 **Recomendación:** reutilizar el servidor y el espacio de trabajo web de OpenCode, el gateway y el panel de OmniRoute, y los flujos de conexión de CLIProxyAPI. Un supervisor nativo sería el único propietario de sus procesos. La elección de Tauri frente al escritorio Electron oficial queda condicionada a una comparación en Windows con las mismas sesiones y herramientas. No hay una estimación de RAM de Windows validada.
 
