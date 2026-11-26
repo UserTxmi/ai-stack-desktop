@@ -1,1 +1,1 @@
-{"name":"ai-stack-desktop-frontend","version":"0.0.1-dev","private":true,"scripts":{"build":"tsc && node build.mjs"},"devDependencies":{"typescript":"5.9.3"}}
+{"name":"ai-stack-desktop-frontend","version":"0.0.2-dev","private":true,"scripts":{"build":"tsc && node build.mjs"},"devDependencies":{"typescript":"5.9.3"}}

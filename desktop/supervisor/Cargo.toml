@@ -1,6 +1,6 @@
 [package]
 name = "w1-supervisor"
-version = "0.0.1-dev"
+version = "0.0.2-dev"
 edition = "2021"
 publish = false
 
@@ -11,8 +11,12 @@ rand = "0.8"
 sha2 = "0.10"
 url = "2"
 base64 = "0.22"
+dunce = "1"
 tokio = { version = "1", features = ["rt", "net", "time"] }
 hyper = { version = "1", features = ["client", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 http-body-util = "0.1"
-windows-sys = { version = "0.61", features = ["Win32_System_JobObjects", "Win32_System_Threading", "Win32_Security", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock"] }
+flate2 = "1"
+tar = { version = "=0.4.46", default-features = false }
+zip = { version = "=4.6.1", default-features = false, features = ["deflate-flate2"] }
+windows-sys = { version = "0.61", features = ["Win32_System_JobObjects", "Win32_System_Threading", "Win32_Security", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_Networking_WinHttp", "Win32_Storage_FileSystem"] }

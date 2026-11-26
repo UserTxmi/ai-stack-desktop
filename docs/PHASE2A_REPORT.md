@@ -1,6 +1,19 @@
 # Prototipo 2A · 0.0.1-dev
 
-**[Descargar el artefacto Windows x64](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45895323904/artifacts/15153592383)** · [CI completa](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45895323904) · [Instrucciones Windows 11](../desktop/PROBAR.md). Es el EXE de [`fdf33b7`](https://github.com/UserTxmi/ai-stack-desktop/commit/fdf33b7bc6458d449b595992e57cb753c2d48f7f). Retención del artefacto hasta **26-12-2026 21:13 UTC**. También se puede descargar con `gh run download 45895323904 --repo UserTxmi/ai-stack-desktop --name AI-Stack-Desktop-0.0.1-dev-win-x64 --dir W1`.
+**[Descargar el artefacto Windows x64](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45895323904/artifacts/15153592383)** · [CI completa](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45895323904). El ZIP incluye su guía 2A. Es el EXE de [`fdf33b7`](https://github.com/UserTxmi/ai-stack-desktop/commit/fdf33b7bc6458d449b595992e57cb753c2d48f7f). Retención del artefacto hasta **26-12-2026 21:13 UTC**. También se puede descargar con `gh run download 45895323904 --repo UserTxmi/ai-stack-desktop --name AI-Stack-Desktop-0.0.1-dev-win-x64 --dir W1`.
+
+### Prueba interactiva básica en Windows 11
+
+El responsable probó `0.0.1-dev` personalmente en su instalación física de Windows 11. Informó que finalizó la preparación, abrió Tauri, CLIProxyAPI/OmniRoute/OpenCode iniciaron con listeners propios comprobados, OpenCode confirmó el catálogo `low/high` y el proveedor sintético respondió. Al detener se observó:
+
+```text
+OpenCode: Turno sintético completado.
+OpenCode: Job vacío.
+OmniRoute: Job vacío.
+CLIProxyAPI: Job vacío.
+```
+
+Picos individuales observados: **CLIProxyAPI 75,4 MiB**, **OmniRoute 629,7 MiB**, **OpenCode 990,5 MiB**. Son máximos individuales, no mediciones simultáneas de RAM. No se informó build exacta ni versión de WebView2. El responsable aprobó la fase 2A para su alcance experimental; esta prueba básica no es una certificación completa ni cierra 1B-Desktop. La prueba es independiente de CI.
 
 ### Evidencia del entregable
 
@@ -16,7 +29,7 @@
 
 Los picos no tienen por qué ser simultáneos. No se midió la ventana, ni se probó interacción con WebView2; estos resultados **no cierran 1B-Desktop**.
 
-**Alcance.** 1B-CI aprobada exclusivamente para [W1 corregido en `921253e`](PHASE1B_CI_REPORT.md). Validación de escritorio Windows 11 pendiente. [Workflow](https://github.com/UserTxmi/ai-stack-desktop/actions/workflows/windows-w1.yml) y [procedimiento de prueba](../desktop/PROBAR.md).
+**Alcance de CI.** 1B-CI aprobada exclusivamente para [W1 corregido en `921253e`](PHASE1B_CI_REPORT.md). La validación amplia de escritorio Windows 11 sigue pendiente. [Workflow](https://github.com/UserTxmi/ai-stack-desktop/actions/workflows/windows-w1.yml).
 
 **Qué ejecuta el EXE.** `desktop/app` conecta cuatro comandos locales de Tauri a `desktop/supervisor`, sin rutas, puertos ni órdenes libres desde la webview. El supervisor verifica SHA-256 de los puntos de entrada, binarios, plugin, SQLite y cinco chunks. La preparación verifica archivos y locks publicados antes de instalar transitivas. No es una auditoría continua de cada dependencia en disco. Un bloqueo de archivo exclusivo impide dos propietarios de la demo. Perfiles nuevos por arranque bajo LocalAppData, entorno por lista permitida y permisos `ask`. El trabajador bloquea en stdin hasta entrar en su Job con cierre al perder el último handle. Cada sonda del supervisor comprueba listener y par TCP establecido antes de enviar claves; no sigue redirects ni usa proxy. Cierre inverso, comprobación de Jobs vacíos y limpieza del perfil. Sólo se conserva un anillo de eventos propios y el recuento de bytes de salida; sin transcribir stdout/stderr.
 

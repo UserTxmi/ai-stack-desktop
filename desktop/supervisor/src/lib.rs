@@ -1,7 +1,6 @@
 use base64::Engine;
 use serde::Serialize;
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     fs::{self, File, OpenOptions},
@@ -12,11 +11,17 @@ use std::{
     thread::sleep,
     time::{Duration, Instant},
 };
+mod acquire;
 mod http;
+mod install;
 mod job;
+mod preparation;
 use http::Api;
+pub use install::Install;
 pub use job::worker_mode;
 use job::{Job, Spec};
+pub use preparation::{prepare, verify, PreparationStats, Progress};
+use sha2::{Digest, Sha256};
 type Result<T> = std::result::Result<T, String>;
 type Env = BTreeMap<String, String>;
 trait Safe<T> {
@@ -97,22 +102,23 @@ fn environment(home: &Path, node: &Path) -> Result<Env> {
     );
     Ok(e)
 }
-fn verify(root: &Path) -> Result<()> {
-    if !root.join("prepared").is_file() {
-        return Err("Preparar los runtimes con preparar.ps1".into());
+fn demo_env(install: &Install, run: &str, role: &str, node: &Path) -> Result<Env> {
+    let sub = |dir: &str| install.root().join(dir).join(run).join(role);
+    let mut env = environment(&sub("datos"), node)?;
+    for (key, dest) in [
+        ("TEMP", "preparacion"),
+        ("TMP", "preparacion"),
+        ("XDG_CONFIG_HOME", "config"),
+        ("XDG_CACHE_HOME", "cache"),
+        ("XDG_STATE_HOME", "logs"),
+    ] {
+        let p = sub(dest);
+        dir(&p)?;
+        env.insert(key.into(), s(&p));
     }
-    let hashes: BTreeMap<String, String> =
-        serde_json::from_str(include_str!("../../w1.json")).unwrap();
-    for (name, hash) in hashes {
-        let mut h = Sha256::new();
-        let mut f = File::open(root.join(&name)).map_err(|_| format!("Falta {name}"))?;
-        io::copy(&mut f, &mut h).safe()?;
-        if format!("{:x}", h.finalize()) != hash {
-            return Err(format!("Integridad W1: {name}"));
-        }
-    }
-    Ok(())
+    Ok(env)
 }
+const DEMO_DIRS: [&str; 5] = ["config", "datos", "cache", "logs", "preparacion"];
 struct Service {
     job: Job,
     api: Api,
@@ -137,9 +143,8 @@ pub struct Status {
 }
 pub struct Supervisor {
     runtime: PathBuf,
-    base: PathBuf,
-    profile: Option<PathBuf>,
-    lock: Option<File>,
+    install: std::sync::Arc<Install>,
+    profile: Option<String>,
     fixture: Option<Job>,
     services: Vec<Service>,
     events: Vec<String>,
@@ -148,20 +153,36 @@ pub struct Supervisor {
     last_probe: Instant,
 }
 impl Supervisor {
-    pub fn new(runtime: PathBuf, base: PathBuf) -> Self {
-        let preparation = verify(&runtime);
+    pub fn new(install: std::sync::Arc<Install>) -> Self {
+        let runtime = install.runtime();
         Self {
             runtime,
-            base,
+            install,
             profile: None,
-            lock: None,
             fixture: None,
             services: Vec::new(),
             events: vec![],
-            preparation,
+            preparation: Err("Comprobando archivos…".into()),
             error: None,
             last_probe: Instant::now(),
         }
+    }
+    pub fn set_preparation(&mut self, result: Result<()>) {
+        self.preparation = result;
+    }
+    pub fn running(&self) -> bool {
+        self.profile.is_some()
+    }
+    pub fn owned_pids(&self) -> Result<Vec<u32>> {
+        let mut pids = Vec::new();
+        for job in self
+            .fixture
+            .iter()
+            .chain(self.services.iter().map(|s| &s.job))
+        {
+            pids.extend(job.pids()?);
+        }
+        Ok(pids)
     }
     fn event(&mut self, msg: String) {
         if self.events.len() == 48 {
@@ -214,7 +235,7 @@ impl Supervisor {
         }
     }
     pub fn start(&mut self) -> Result<()> {
-        if self.lock.is_some() {
+        if self.running() {
             return Err("Este supervisor ya posee el perfil".into());
         }
         self.error = None;
@@ -231,21 +252,18 @@ impl Supervisor {
         result
     }
     fn inner(&mut self) -> Result<()> {
-        self.preparation = verify(&self.runtime);
+        self.preparation = verify(&self.install);
         self.preparation.clone()?;
-        dir(&self.base)?;
-        self.lock = Some(
-            OpenOptions::new()
-                .create(true)
-                .write(true)
-                .share_mode(0)
-                .open(self.base.join("supervisor.lock"))
-                .map_err(|_| "Otra instancia posee el perfil demo o se denegó el acceso")?,
-        );
-        let run = self.base.join(format!("demo-{}", &secret()[..20]));
-        fs::create_dir(&run).safe()?;
-        self.profile = Some(run.clone());
-        let project = run.join("Proyecto demo");
+        self.install.check_layout()?;
+        let profile = format!("demo-{}", &secret()[..20]);
+        let tmp = self.install.root().join("preparacion").join(&profile);
+        let config = self.install.root().join("config").join(&profile);
+        let data_root = self.install.root().join("datos").join(&profile);
+        self.profile = Some(profile.clone());
+        install::folder(&tmp)?;
+        install::folder(&config)?;
+        install::folder(&data_root)?;
+        let project = data_root.join("Proyecto demo");
         dir(&project)?;
         let node = self.runtime.join(NODE);
         let plugin = self.runtime.join(PLUGIN);
@@ -262,7 +280,7 @@ impl Supervisor {
         let key = secret();
         let password = secret();
         let ocpass = secret();
-        let demo = run.join("fixture.mjs");
+        let demo = tmp.join("fixture.mjs");
         fs::write(&demo, include_str!("demo.mjs")).safe()?;
         let fix: Value =
             serde_json::from_str(include_str!("../../../experiments/phase1/fixtures.json"))
@@ -276,15 +294,15 @@ impl Supervisor {
         self.fixture = Some(Job::launch(
             spec,
             &project,
-            &environment(&run.join("fixture"), &node)?,
+            &demo_env(&self.install, &profile, "fixture", &node)?,
         )?);
         let mut fapi = Api::new(ports[0]);
         fapi.auth = format!("Bearer {source}");
         ready(self.fixture.as_mut().unwrap(), &mut fapi, "/v1/models")?;
-        let cpa = run.join("cpa.yaml");
+        let cpa = config.join("cpa.yaml");
         dump(
             &cpa,
-            &json!({"server":{"host":"127.0.0.1","port":ports[1]},"management":{"disable-control-panel":true},"access":{"api-keys":[key]},"oauth":{"auth-dir":run.join("cpa-auth")},"api-keys":{"openai-compatibility":[{"name":"fixture","base-url":format!("{}/v1",fapi.origin()),"keys":[{"api-key":source}],"models":[{"name":"lab-reasoner","alias":"lab-reasoner","thinking":{"levels":fix["efforts"]}}]}]}}),
+            &json!({"server":{"host":"127.0.0.1","port":ports[1]},"management":{"disable-control-panel":true},"access":{"api-keys":[key]},"oauth":{"auth-dir":data_root.join("cpa-auth")},"api-keys":{"openai-compatibility":[{"name":"fixture","base-url":format!("{}/v1",fapi.origin()),"keys":[{"api-key":source}],"models":[{"name":"lab-reasoner","alias":"lab-reasoner","thinking":{"levels":fix["efforts"]}}]}]}}),
         )?;
         let mut api = Api::new(ports[1]);
         api.auth = format!("Bearer {key}");
@@ -293,7 +311,7 @@ impl Supervisor {
             self.runtime.join("cpa/cli-proxy-api.exe"),
             vec!["-config".into(), s(&cpa)],
             &project,
-            environment(&run.join("cpa"), &node)?,
+            demo_env(&self.install, &profile, "cpa", &node)?,
             api,
             "/v1/models",
         )?;
@@ -301,12 +319,12 @@ impl Supervisor {
         let gateway = Api::new(ports[2]);
         let origin = gateway.origin();
         let omni = self.runtime.join("package/dist");
-        let mut env = environment(&run.join("omni"), &node)?;
+        let mut env = demo_env(&self.install, &profile, "omni", &node)?;
         for (k, v) in [
             ("PORT", ports[2].to_string()),
             ("HOSTNAME", "127.0.0.1".into()),
             ("OMNIROUTE_SERVER_HOST", "127.0.0.1".into()),
-            ("DATA_DIR", s(&run.join("omni-data"))),
+            ("DATA_DIR", s(&data_root.join("omni-data"))),
             ("NODE_ENV", "production".into()),
             ("INITIAL_PASSWORD", password.clone()),
             ("REQUIRE_API_KEY", "true".into()),
@@ -335,15 +353,15 @@ impl Supervisor {
         gw.api = Api::new(ports[2]);
         gw.api.auth = format!("Bearer {token}");
         let row = healthy(gw, 1)?;
-        let project_env = environment(&run.join("oc"), &node)?;
+        let project_env = demo_env(&self.install, &profile, "oc", &node)?;
         let data = PathBuf::from(&project_env["XDG_DATA_HOME"]).join("opencode");
         dir(&data)?;
         dump(
             &data.join("auth.json"),
             &json!({(PID):{"type":"api","key":token}}),
         )?;
-        let conf = run.join("opencode.json");
-        let helper = run.join("catalog.mjs");
+        let conf = config.join("opencode.json");
+        let helper = tmp.join("catalog.mjs");
         fs::write(&helper, include_str!("catalog.mjs")).safe()?;
         let mut catalog=Job::launch(Spec{exe:node.clone(),args:vec![s(&helper)],input:json!({"plugin":plugin,"baseURL":origin,"apiKey":token,"target":TARGET,"row":row,"file":conf}).to_string()},&project,&project_env)?;
         for _ in 0..200 {
@@ -361,7 +379,7 @@ impl Supervisor {
         .safe()?;
         dump(
             &conf,
-            &json!({"plugin":[[uri(&plugin)?,{"providerId":"omniroute","baseURL":origin,"autoSyncIntervalMs":0,"features":{"combos":false,"autoCombos":false,"enrichment":false,"diskCache":false,"mcpAutoEmit":false}}],[uri(&self.runtime.join("peers/selection.mjs"))?,{"providerID":PID,"modelID":TARGET,"efforts":overlay["tiers"],"rejected":run.join("rejected.flag")}]],"provider":overlay["provider"],"permission":"ask","enabled_providers":[PID]}),
+            &json!({"plugin":[[uri(&plugin)?,{"providerId":"omniroute","baseURL":origin,"autoSyncIntervalMs":0,"features":{"combos":false,"autoCombos":false,"enrichment":false,"diskCache":false,"mcpAutoEmit":false}}],[uri(&self.runtime.join("peers/selection.mjs"))?,{"providerID":PID,"modelID":TARGET,"efforts":overlay["tiers"],"rejected":tmp.join("rejected.flag")}]],"provider":overlay["provider"],"permission":"ask","enabled_providers":[PID]}),
         )?;
         let mut env = project_env;
         for (k, v) in [
@@ -475,20 +493,30 @@ impl Supervisor {
         if let Some(mut j) = self.fixture.take() {
             if let Err(e) = j.stop() {
                 err = Some(e)
+            } else {
+                self.event("Proveedor sintético: Job vacío".into());
             }
         }
         if let Some(p) = self.profile.take() {
-            for _ in 0..20 {
-                if fs::remove_dir_all(&p).is_ok() {
-                    break;
+            for segment in DEMO_DIRS {
+                let base = self.install.root().join(segment);
+                if install::item(&base).is_err() {
+                    err = Some("La carpeta demo fue redirigida; no se ha borrado".into());
+                    continue;
                 }
-                sleep(Duration::from_millis(100))
+                let path = base.join(&p);
+                for _ in 0..20 {
+                    if install::discard(&path).is_ok() {
+                        break;
+                    }
+                    sleep(Duration::from_millis(100));
+                }
+                if path.exists() {
+                    err = Some("No se pudo limpiar el perfil demo".into());
+                }
             }
-            if p.exists() {
-                err = Some("No se pudo limpiar el perfil demo".into())
-            }
+            self.install.log("supervisor.txt", &self.events.join("\n"));
         }
-        self.lock.take();
         if let Some(e) = err {
             self.error = Some(e.clone());
             Err(e)
@@ -544,6 +572,34 @@ fn healthy(svc: &mut Service, i: usize) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    pub(crate) struct Remove(pub PathBuf);
+    impl Drop for Remove {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+    #[test]
+    fn no_adopta_directorios_ajenos_y_excluye_otra_instancia() {
+        let p = std::env::temp_dir().join(format!("W1 carpeta {}", secret()));
+        fs::create_dir(&p).unwrap();
+        let _tmp = Remove(p.clone());
+        fs::create_dir(p.join("datos")).unwrap();
+        fs::write(p.join("datos/ajeno.txt"), "ajeno").unwrap();
+        assert!(Install::open(&p).err().unwrap().contains("no pertenece"));
+        assert_eq!(
+            fs::read_to_string(p.join("datos/ajeno.txt")).unwrap(),
+            "ajeno"
+        );
+        let clean = p.join("carpeta nueva");
+        fs::create_dir(&clean).unwrap();
+        let first = Install::open(&clean).unwrap();
+        assert!(Install::open(&clean)
+            .err()
+            .unwrap()
+            .contains("otra instancia"));
+        drop(first);
+        assert!(Install::open(&clean).is_ok());
+    }
     #[test]
     fn no_adopta_listener_ajeno() {
         let foreign = TcpListener::bind("127.0.0.1:0").unwrap();

@@ -1,4 +1,5 @@
 """Sólo agrega mediciones y campos enumerados: nunca exportar perfiles o texto de errores."""
+import argparse
 import json
 import math
 import platform
@@ -58,8 +59,11 @@ def summary(run):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sqlite-verified-by-exe', action='store_true')
+    args = parser.parse_args()
     out = LAB/'export'
     out.mkdir(parents=True,exist_ok=True)
     report = dict(os=platform.version(), arch=platform.machine(), offline=False,
-                  sqlite=(LAB/'runtime/prepared').is_file(), ensayos=[summary(p) for p in sorted(LAB.glob('run-*'))])
+                  sqlite=args.sqlite_verified_by_exe or (LAB/'runtime/prepared').is_file(), ensayos=[summary(p) for p in sorted(LAB.glob('run-*'))])
     (out/'informe.json').write_text(json.dumps(report,indent=2),encoding='utf8')

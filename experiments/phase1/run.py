@@ -12,7 +12,7 @@ import threading
 import time
 import traceback
 
-from prepare import LAB, RUNTIME, check, env_for, windows
+from prepare import LAB, RUNTIME, ROOT, check, env_for, windows
 from probes import Client, offline_ui, stream
 from provider import FIX, MODEL, Provider
 from winjob import Job
@@ -51,6 +51,7 @@ def binaries():
 
 
 def main():
+    global RUNTIME
     parser = argparse.ArgumentParser()
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument('--isolated-offline', action='store_true')
@@ -58,11 +59,16 @@ def main():
     parser.add_argument('--interactive', action='store_true')
     parser.add_argument('--focus', action='store_true', help='sólo bloqueos, con sus prerrequisitos reales')
     parser.add_argument('--only', choices=['cpa', 'oc', 'omni', 'all'], default='all')
+    parser.add_argument('--prepared-runtime', type=Path, help='runtimes ya verificados por el EXE 2B (sólo CI hospedada)')
     args = parser.parse_args()
     windows()
     check(not args.hosted_ci or not args.interactive, 'CI no admite consola interactiva')
-    marker = 'binaries' if args.only in ('cpa','oc') else 'prepared'
-    check((RUNTIME/marker).is_file(), 'ejecutar primero prepare.py')
+    if args.prepared_runtime:
+        check(args.hosted_ci, 'el runtime alternativo sólo se admite en CI hospedada')
+        RUNTIME = args.prepared_runtime.resolve(strict=True)
+    else:
+        marker = 'binaries' if args.only in ('cpa','oc') else 'prepared'
+        check((RUNTIME/marker).is_file(), 'ejecutar primero prepare.py')
     run = LAB / ('run-' + secrets.token_hex(6))
     run.mkdir()
     project = run/'Proyecto de ensayo ñ'
@@ -154,7 +160,8 @@ def main():
             ready(jobs['omni'], worker, gateway, '/healthz')
             return {'runtime': 'Node privado'}
         if args.only in ('omni', 'all'):
-            worker = jobs['omni'].launch([node,'--require',RUNTIME/'peers/queue-trace.cjs',omni/'server-ws.mjs'], omni, omnienv)
+            trace_helper = ROOT/'peers/queue-trace.cjs' if args.prepared_runtime else RUNTIME/'peers/queue-trace.cjs'
+            worker = jobs['omni'].launch([node,'--require',trace_helper,omni/'server-ws.mjs'], omni, omnienv)
             test('OmniRoute-salud', omni_health)
             if args.only == 'omni':
                 return

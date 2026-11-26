@@ -11,7 +11,7 @@ use std::{
     ptr::{null, null_mut},
     sync::{
         atomic::{AtomicU64, Ordering},
-        Arc,
+        Arc, Mutex,
     },
 };
 use windows_sys::Win32::{NetworkManagement::IpHelper::GetExtendedTcpTable, System::JobObjects::*};
@@ -46,6 +46,8 @@ pub(crate) struct Job {
     handle: OwnedHandle,
     child: Child,
     pub bytes: Arc<AtomicU64>,
+    tail: Arc<Mutex<Vec<u8>>>,
+    readers: Vec<std::thread::JoinHandle<()>>,
 }
 fn ok(code: i32) -> Result<()> {
     if code == 0 {
@@ -56,6 +58,12 @@ fn ok(code: i32) -> Result<()> {
 }
 impl Job {
     pub fn launch(spec: Spec, cwd: &Path, env: &Env) -> Result<Self> {
+        Self::spawn(spec, cwd, env, false)
+    }
+    pub fn captured(spec: Spec, cwd: &Path, env: &Env) -> Result<Self> {
+        Self::spawn(spec, cwd, env, true)
+    }
+    fn spawn(spec: Spec, cwd: &Path, env: &Env, capture: bool) -> Result<Self> {
         unsafe {
             let raw = CreateJobObjectW(null(), null());
             if raw.is_null() {
@@ -87,7 +95,13 @@ impl Job {
                 return Err("Asignación al Job denegada".into());
             }
             let bytes = Arc::new(AtomicU64::new(0));
-            fn drain(mut src: impl Read + Send + 'static, count: Arc<AtomicU64>) {
+            let tail = Arc::new(Mutex::new(Vec::new()));
+            let mut readers = Vec::new();
+            fn drain(
+                mut src: impl Read + Send + 'static,
+                count: Arc<AtomicU64>,
+                tail: Option<Arc<Mutex<Vec<u8>>>>,
+            ) -> std::thread::JoinHandle<()> {
                 std::thread::spawn(move || {
                     let mut buf = [0; 8192];
                     while let Ok(n) = src.read(&mut buf) {
@@ -95,21 +109,60 @@ impl Job {
                             break;
                         }
                         count.fetch_add(n as u64, Ordering::Relaxed);
+                        if let Some(tail) = &tail {
+                            let mut tail = tail.lock().unwrap();
+                            let overflow = (tail.len() + n).saturating_sub(16384);
+                            tail.drain(..overflow);
+                            tail.extend_from_slice(&buf[..n]);
+                        }
                     }
-                });
+                })
             }
-            drain(child.stdout.take().unwrap(), bytes.clone());
-            drain(child.stderr.take().unwrap(), bytes.clone());
+            readers.push(drain(
+                child.stdout.take().unwrap(),
+                bytes.clone(),
+                capture.then(|| tail.clone()),
+            ));
+            readers.push(drain(
+                child.stderr.take().unwrap(),
+                bytes.clone(),
+                capture.then(|| tail.clone()),
+            ));
             serde_json::to_writer(child.stdin.take().unwrap(), &spec).safe()?;
             Ok(Self {
                 handle,
                 child,
                 bytes,
+                tail,
+                readers,
             })
         }
     }
     pub fn alive(&mut self) -> bool {
         matches!(self.child.try_wait(), Ok(None))
+    }
+    pub fn wait(&mut self, timeout: Duration) -> Result<(bool, String)> {
+        let until = Instant::now() + timeout;
+        loop {
+            if let Some(status) = self.child.try_wait().safe()? {
+                if !self.pids()?.is_empty() {
+                    self.stop()?;
+                    return Err("Quedaron descendientes después de la preparación".into());
+                }
+                for thread in self.readers.drain(..) {
+                    thread.join().safe()?;
+                }
+                return Ok((
+                    status.success(),
+                    String::from_utf8_lossy(&self.tail.lock().unwrap()).into_owned(),
+                ));
+            }
+            if Instant::now() >= until {
+                self.stop()?;
+                return Err("Se agotó el plazo del proceso; su Job quedó vacío".into());
+            }
+            sleep(Duration::from_millis(100));
+        }
     }
     pub fn pids(&self) -> Result<Vec<u32>> {
         unsafe {
@@ -235,6 +288,8 @@ pub(crate) fn test_foreign(raw: windows_sys::Win32::Foundation::HANDLE, port: u1
         handle,
         child,
         bytes: Arc::new(AtomicU64::new(0)),
+        tail: Arc::default(),
+        readers: vec![],
     };
     assert_eq!(
         j.owns(port, None).unwrap_err(),
