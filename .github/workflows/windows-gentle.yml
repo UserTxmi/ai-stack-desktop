@@ -1,4 +1,4 @@
-name: Windows x64 · Entrega portable GPUI 0.0.5-dev
+name: Windows x64 · Cuentas y entrega GPUI 0.0.6-dev
 on:
   workflow_dispatch:
 permissions:
@@ -6,7 +6,7 @@ permissions:
 jobs:
   entrega:
     runs-on: windows-2025
-    timeout-minutes: 32
+    timeout-minutes: 40
     env:
       PYTHONUTF8: '1'
     steps:
@@ -24,13 +24,13 @@ jobs:
           Copy-Item desktop/target/x86_64-pc-windows-msvc/release/ai-stack-gentle.exe entrega-gentle/bin
       - name: Probar los mismos binarios desde una instalación limpia
         run: |
-          $root=Join-Path $env:RUNNER_TEMP 'AI05 ñ'
+          $root=Join-Path $env:RUNNER_TEMP 'AI06 ñ'
           New-Item -ItemType Directory "$root/bin" | Out-Null
           Copy-Item entrega-gentle/bin/* "$root/bin"
-          .\desktop\ci-gentle.ps1 -Root $root -Report entrega-gentle/pruebas.txt
+          .\desktop\ci-cuentas.ps1 -Root $root -Report entrega-gentle/pruebas.txt
       - name: Preparar ZIP por lista permitida
         run: |
-          Copy-Item desktop/PROBAR-GPUI.md,desktop/gentle-assets.json,experiments/gentle/consent.json,experiments/phase1/versions.json entrega-gentle
+          Copy-Item desktop/CUENTAS.md,desktop/gentle-assets.json,experiments/gentle/consent.json,experiments/phase1/versions.json entrega-gentle
           py -3.12 -B desktop/notices.py entrega-gentle/TERCEROS-Rust.txt --gentle
           if ($LASTEXITCODE) {exit $LASTEXITCODE}
           Invoke-WebRequest 'https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/v5.0.0/LICENSE' -OutFile entrega-gentle/LICENSE-GentleAI.txt
@@ -40,7 +40,7 @@ jobs:
       - name: Publicar ZIP portable de prueba
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: AI-Stack-Desktop-0.0.5-dev-win-x64
+          name: AI-Stack-Desktop-0.0.6-dev-win-x64
           path: entrega-gentle/
           if-no-files-found: error
           retention-days: 30

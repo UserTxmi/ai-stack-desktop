@@ -60,6 +60,14 @@ impl Api {
                     .header("host", format!("127.0.0.1:{}", self.port))
                     .header("origin", origin)
                     .header("content-type", "application/json");
+                // La proyección local de CPA 8.1.7 para este formato devuelve los niveles
+                // del registro activo, incluidos alias; no se envía a proveedores externos.
+                if path == "/v1/models?format=grok-shell" {
+                    req = req.header(
+                        "user-agent",
+                        "AI-Stack-Desktop/0.0.6 (grok-shell catalog format)",
+                    );
+                }
                 if !self.auth.is_empty() {
                     req = req.header("authorization", &self.auth)
                 }
@@ -126,6 +134,14 @@ impl Api {
                 )
             })?
         })
+    }
+    pub(super) fn login(&mut self, job: &Job, password: &str) -> Result<()> {
+        self.request(job, "POST", "/api/auth/login", json!({"password":password}))?;
+        self.csrf = field(
+            &self.request(job, "GET", "/api/auth/csrf", Value::Null)?,
+            "/token",
+        )?;
+        Ok(())
     }
     pub fn provision(
         &mut self,

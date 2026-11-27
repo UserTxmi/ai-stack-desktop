@@ -111,6 +111,8 @@ pub fn prepare(install: &Install, update: impl FnMut(Progress)) -> Result<Prepar
     prepare_selected(install, update, &COMPONENTS, false)
 }
 const GENTLE_COMPONENTS: &[(&str, &str)] = &[
+    ("go", "Go privado"),
+    ("panel", "Panel de CLIProxyAPI"),
     ("cpa", "CLIProxyAPI"),
     ("node", "Node / npm"),
     ("package", "OmniRoute"),
@@ -250,6 +252,10 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
         item(&output)?;
         let dir = self.stage.join(id);
         match id {
+            "panel" => {
+                folder(&dir)?;
+                fs::copy(self.fetch(id, label)?, dir.join("management.html")).safe()?;
+            }
             "package" => self.gateway(runtime)?,
             "peers" => self.peers(runtime)?,
             "gentle" => self.gentle(runtime)?,
@@ -649,6 +655,16 @@ fn verify_component(root: &Path, id: &str, inventory: &Inventory, installed: boo
         check_hash(root, &name, &hash)?;
     }
     match id {
+        "panel" => check_hash(
+            root,
+            "panel/management.html",
+            artifact(inventory, id).sha256.as_deref().unwrap(),
+        )?,
+        "go" => check_hash(
+            root,
+            "go/go/bin/go.exe",
+            "8328d44e29aafb5779e4424c639fa18cbd0a437cf71faa0b0f1ccc7b2c6fb98c",
+        )?,
         "git" => {
             check_hash(
                 root,

@@ -1,42 +1,117 @@
 use super::*;
+use accounts::{atomic, Accounts};
 
-/// Entrada dedicada: preparación y servicios comunes; nunca entra en la rama OpenCode.
+fn read_json(p: &Path) -> Result<Value> {
+    if install::item(p)?.is_none() {
+        return Ok(json!({}));
+    }
+    serde_json::from_slice(&fs::read(p).safe()?).safe()
+}
+fn setup(home: &Path, runtime: &Path, env: &Env, project: &Path) -> Result<()> {
+    let marker = Path::new(&env["GENTLE_SHELL_CONFIG"]);
+    let key = s(&dunce::canonicalize(home).safe()?);
+    let ready = || -> Result<bool> {
+        let doc = read_json(marker)?;
+        let m = &doc["provisioned"][&key];
+        Ok(m["gentleAi"] == "5.0.0" && m["gentlePi"] == "5.0.0" && m["at"].is_string())
+    };
+    if ready()? {
+        return Ok(());
+    };
+    let mut job = Job::captured(
+        Spec {
+            exe: runtime.join(NODE),
+            args: vec![
+                s(&runtime.join("gentle/node_modules/gentle-pi/bin/gentle-shell.mjs")),
+                "--isolated".into(),
+                "setup".into(),
+            ],
+            input: String::new(),
+        },
+        project,
+        env,
+    )?;
+    let (ok, out) = job.wait(Duration::from_secs(360))?;
+    if !ok || !ready()? {
+        let why = [
+            "ENOENT",
+            "EACCES",
+            "EPERM",
+            "not found",
+            "preflight",
+            "timed out",
+            "not on PATH",
+        ]
+        .into_iter()
+        .find(|v| out.contains(v))
+        .unwrap_or("sin registro de aprovisionamiento");
+        return Err(format!("Gentle Shell setup: {why}"));
+    }
+    Ok(())
+}
+
 pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> Result<()> {
-    let probe = prompt.as_deref() == Some("LAB-DELEGAR");
-    prepare_gentle(&install, |p| println!("{} · {}", p.component, p.stage))?;
-    let mut sup = Supervisor::new(install.clone());
-    sup.inner(true)?;
+    let ci = prompt.is_some();
     let runtime = install.runtime();
     let node = runtime.join(NODE);
-    let root = install.root().join("datos/gentle");
+    let bootstrap = environment(&install.temporary().join("inicio"), &node)?;
+    let status = install.temporary().join("inicio/estado.txt");
+    let mut splash = if !ci {
+        Some(Job::launch(Spec{exe:PathBuf::from(&bootstrap["SystemRoot"]).join("System32/WindowsPowerShell/v1.0/powershell.exe"),args:vec!["-NoProfile".into(),"-STA".into(),"-Command".into(),"Add-Type -AssemblyName System.Windows.Forms;$f=New-Object Windows.Forms.Form;$f.Text='AI Stack Desktop · Preparando';$f.Width=440;$f.Height=110;$l=New-Object Windows.Forms.Label;$l.Dock='Fill';$f.Controls.Add($l);$t=New-Object Windows.Forms.Timer;$t.Interval=750;$t.Add_Tick({try{$l.Text=[IO.File]::ReadAllText((Join-Path (Get-Location) 'estado.txt'))}catch{}});$t.Start();[void]$f.ShowDialog()".into()],input:String::new()},status.parent().unwrap(),&bootstrap)?)
+    } else {
+        None
+    };
+    let mut last = String::new();
+    prepare_gentle(&install, |p| {
+        let text = format!("{} · {}", p.component, p.stage);
+        if last != text {
+            let _ = fs::write(&status, &text);
+            println!("{text}");
+            last = text;
+        }
+    })?;
+    fs::write(
+        &status,
+        "Preparando las cuentas locales y el companion de Gentle Shell…",
+    )
+    .safe()?;
+    let mut sup = Supervisor::new(install.clone());
+    let mut accounts = Accounts::start(&mut sup, ci)?;
+    let root = accounts.folder.join("gentle");
     install::folder(&root)?;
     let path = |name: &str| root.join(name);
     for d in [
         "agent",
         "config",
         "desktop",
-        "Proyecto demo",
+        "Proyecto",
         "home",
         "memory",
+        "desktop/toolchain",
+        "desktop/toolchain/bin",
     ] {
         install::folder(&path(d))?;
     }
     let home = path("agent");
-    let config = path("config");
-    let project = path("Proyecto demo");
-    let gui_settings = path("desktop/settings.json");
-    if install::item(&gui_settings)?.is_none() {
-        dump(
-            &gui_settings,
-            &json!({"onboarding":{"done":true,"version":"0.1.28"}}),
-        )?;
-    }
-    let note = path("nota-demo.txt");
-    if install::item(&note)?.is_none() {
-        fs::write(note, "G2-CONTENIDO").safe()?;
-    }
+    let project = path("Proyecto");
     let mut env = environment(&path("home"), &node)?;
+    let bin = path("desktop/toolchain/bin");
     let engram = runtime.join("engram/engram.exe");
+    let go = runtime.join("go/go");
+    let modules = runtime.join("gentle/node_modules");
+    for (name, source) in [
+        ("node.exe", &node),
+        ("go.exe", &go.join("bin/go.exe")),
+        ("engram.exe", &engram),
+    ] {
+        let link = bin.join(name);
+        if install::item(&link)?.is_none() {
+            fs::hard_link(source, &link).safe()?;
+        }
+        if preparation::digest(&link)? != preparation::digest(source)? {
+            return Err(format!("Toolchain privada incorrecta: {name}"));
+        }
+    }
     let port = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
         .safe()?
         .local_addr()
@@ -54,69 +129,13 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
     )?;
     let mut mapi = Api::new(port);
     ready(&mut mem, &mut mapi, "/health")?;
-    let gw = &mut sup.services[1];
-    let catalog = gw.api.request(&gw.job, "GET", "/v1/models", Value::Null)?;
-    let mut models = Vec::new();
-    for row in catalog["data"].as_array().ok_or("Catálogo ausente")? {
-        // La única conexión autorizada de este portable es el fixture CPA.
-        if row["id"] != TARGET && row["id"] != "labcpa/lab-helper" {
-            continue;
-        }
-        let tiers = row["capabilities"]["effort_tiers"]
-            .as_array()
-            .ok_or("Faltan esfuerzos")?;
-        let mut map = serde_json::Map::new();
-        for t in ["off", "minimal", "low", "medium", "high", "xhigh", "max"] {
-            map.insert(
-                t.into(),
-                if tiers.iter().any(|v| v == t) {
-                    json!(t)
-                } else {
-                    Value::Null
-                },
-            );
-        }
-        models.push(json!({"id":row["id"],"reasoning":true,"thinkingLevelMap":map,"contextWindow":row["context_length"],"maxTokens":row["max_output_tokens"]}));
-    }
-    if models.len() != 2 {
-        return Err("Modelo del proveedor sintético ausente".into());
-    }
-    let modules = runtime.join("gentle/node_modules");
-    dump(
-        &home.join("models.json"),
-        &json!({"providers":{"omniroute":{"api":"openai-completions","baseUrl":format!("{}/v1",gw.api.origin()),"apiKey":"$GS_INFERENCE","compat":{"supportsReasoningEffort":true,"thinkingFormat":"openai"},"models":models}}}),
-    )?;
-    let settings = home.join("settings.json");
-    if install::item(&settings)?.is_none() {
-        dump(
-            &settings,
-            &json!({"defaultProvider":"omniroute","defaultModel":TARGET,"defaultThinkingLevel":"low","enabledModels":["omniroute/*"],"shellPath":runtime.join("git/usr/bin/sh.exe"),"packages":[modules.join("gentle-engram")]}),
-        )?;
-    }
-    let routing = config.join("models.json");
-    if install::item(&routing)?.is_none() {
-        dump(
-            &routing,
-            &json!({"gentle-ai-explore":{"model":"omniroute/labcpa/lab-helper","thinking":"high"}}),
-        )?;
-    }
-    let bin = path("desktop/toolchain/bin");
-    fs::create_dir_all(&bin).safe()?;
-    // GPUI antepone toolchain/bin incluso al PATH de login leído del registro.
-    // Enlace duro NTFS creado por el propietario; no resolver `node` en PATH del usuario.
-    let private_node = bin.join("node.exe");
-    if install::item(&private_node)?.is_none() {
-        fs::hard_link(&node, &private_node).safe()?;
-    }
-    if preparation::digest(&private_node)? != preparation::digest(&node)? {
-        return Err("Node privado de GPUI no coincide".into());
-    }
-    for (key, value) in [
+    for (k, v) in [
         ("GENTLE_SHELL_HOME", s(&home)),
         ("PI_CODING_AGENT_DIR", s(&home)),
+        ("GENTLE_SHELL_CONFIG", s(&path("launcher.json"))),
         ("GENTLE_SHELL_ARGS", "--isolated".into()),
         ("GENTLE_SHELL_GPUI_DATA_DIR", s(&path("desktop"))),
-        ("GENTLE_PI_CONFIG_HOME", s(&config)),
+        ("GENTLE_PI_CONFIG_HOME", s(&path("config"))),
         ("GENTLE_SHELL_NO_AUTO_SETUP", "1".into()),
         (
             "GENTLE_SHELL_BIN",
@@ -124,24 +143,58 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         ),
         ("ENGRAM_URL", mapi.origin()),
         ("ENGRAM_BIN", s(&engram)),
+        ("ENGRAM_PROJECT", "gentle".into()),
         ("PI_OFFLINE", "1".into()),
-        ("ENGRAM_PROJECT", "gentle-demo".into()),
-        ("GS_INFERENCE", gw.api.auth[7..].to_string()),
+        ("GOROOT", s(&go)),
+        ("GOTOOLCHAIN", "local".into()),
+        ("npm_config_prefix", s(&path("home/npm"))),
+        ("npm_config_cache", s(&path("home/npm-cache"))),
         (
             "PATH",
             format!(
-                "{};{};{}",
+                "{};{};{};{};{}",
+                s(&bin),
+                s(&modules.join(".bin")),
                 s(&runtime.join("git/cmd")),
                 s(&runtime.join("git/usr/bin")),
                 env["PATH"]
             ),
         ),
     ] {
-        env.insert(key.into(), value);
+        env.insert(k.into(), v);
     }
+    setup(&home, &runtime, &env, &project)?;
+    let models = accounts.sync(&mut sup, &home)?;
+    let settings = home.join("settings.json");
+    let mut cfg = read_json(&settings)?;
+    cfg["enabledModels"] = json!(["omniroute/*"]);
+    cfg["defaultProvider"] = json!("omniroute");
+    cfg["shellPath"] = json!(runtime.join("git/usr/bin/sh.exe"));
+    if cfg["defaultModel"].is_null() || ci {
+        if let Some(m) = models.first() {
+            cfg["defaultModel"] = m["id"].clone();
+        }
+    }
+    if ci {
+        cfg["defaultThinkingLevel"] = json!("low");
+    }
+    atomic(&settings, &serde_json::to_vec(&cfg).safe()?)?;
+    let gui = path("desktop/settings.json");
+    if install::item(&gui)?.is_none() {
+        atomic(
+            &gui,
+            &serde_json::to_vec(&json!({"onboarding":{"done":true,"version":"0.1.28"}})).safe()?,
+        )?;
+    }
+    let signal = path("sincronizar");
+    accounts.controls(&bootstrap, &signal, models.is_empty() && !ci)?;
+    env.insert(
+        "GS_INFERENCE".into(),
+        sup.services[1].api.auth[7..].to_owned(),
+    );
     let mut args = vec![s(&project)];
-    if let Some(text) = prompt {
-        args.extend(["--prompt".into(), text]);
+    if let Some(prompt) = prompt {
+        args.extend(["--prompt".into(), prompt]);
     }
     let mut ui = Job::launch(
         Spec {
@@ -156,11 +209,9 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
     let deadline = Instant::now() + Duration::from_secs(90);
     loop {
         if !ui.alive() {
-            return Err("GPUI terminó antes de adquirir su instancia privada".into());
+            return Err("GPUI terminó durante el arranque".into());
         }
-        if let Ok(rec) = fs::read(&record)
-            .and_then(|b| serde_json::from_slice::<Value>(&b).map_err(io::Error::other))
-        {
+        if let Ok(rec) = read_json(&record) {
             if let (Some(pid), Some(p)) = (rec["pid"].as_u64(), rec["port"].as_u64()) {
                 if ui.pids()?.contains(&(pid as u32)) && ui.owns(p as u16, None)? {
                     break;
@@ -172,35 +223,42 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         }
         sleep(Duration::from_millis(150));
     }
-    println!("GPUI lista. Cierre su ventana para detener el stack.");
-    let receipt = install
-        .temporary()
-        .join(sup.profile.as_ref().unwrap())
-        .join("hijo-activo.txt");
-    let mut probed = false;
+    if let Some(j) = splash.take() {
+        j.stop()?;
+    }
+    println!("GPUI lista");
+    let mut due = Instant::now() + Duration::from_secs(12);
     while ui.alive() {
         if !mem.alive()
             || sup
                 .services
                 .iter()
-                .any(|v| v.job.pids().map_or(true, |p| p.is_empty()))
+                .any(|s| s.job.pids().map_or(true, |p| p.is_empty()))
+            || !accounts.panel.as_mut().unwrap().alive()
         {
-            return Err("Se detuvo un servicio del stack".into());
+            return Err("Se detuvo un componente privado".into());
         }
-        if probe && !probed && fs::read_to_string(&receipt).is_ok_and(|v| v == "high") {
-            // La prueba necesita la identidad de los Jobs antes de matar a su propietario,
-            // no una reconstrucción a partir de PIDs padre que Windows puede reutilizar.
-            dump(
-                &receipt.with_file_name("jobs-ci.json"),
-                &json!({
-                    "servicios":sup.owned_pids()?, "engram":mem.pids()?, "gpui":ui.pids()?
-                }),
-            )?;
-            probed = true;
+        if Instant::now() >= due || signal.exists() {
+            let _ = fs::remove_file(&signal);
+            let delay = match accounts.sync(&mut sup, &home) {
+                Ok(_) => 12,
+                Err(e) if e == "HTTP 401" || e == "HTTP 403" => {
+                    return Err("Acceso revocado; vuelva a abrir la aplicación".into())
+                }
+                Err(_) => {
+                    install.log(
+                        "catalogo.txt",
+                        "Sincronización pendiente; se conserva el último catálogo.",
+                    );
+                    60
+                }
+            };
+            due = Instant::now() + Duration::from_secs(delay);
         }
-        sleep(Duration::from_millis(300));
+        sleep(Duration::from_millis(350));
     }
     ui.stop()?;
+    accounts.panel.take().unwrap().stop()?;
     mem.stop()?;
     sup.stop()
 }
