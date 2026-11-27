@@ -68,6 +68,8 @@ def verify(root, project, node, env, sources, report):
             (desktop/'settings.json').write_text('{"onboarding":{"done":true,"version":"0.1.28"}}')
             test_env['GENTLE_SHELL_GPUI_DATA_DIR']=str(desktop)
             work=root/('proyecto-'+phase);work.mkdir()
+            obs=root/('counts-'+phase+'.jsonl');test_env['G2_TOOL_REPORT']=str(obs)
+            test_env['GENTLE_SHELL_ARGS']='--isolated --extension "'+str(Path(__file__).with_name('tool-observer.ts'))+'"'
             parent.delegate=True; child.consent_answer=None; child.consent_offered=False
             # Fuera del proyecto, dentro de la raíz de ensayo; ningún fichero del usuario.
             child.consent_path=root/(phase+'.txt') if phase!='active-close' else None
@@ -110,6 +112,16 @@ def verify(root, project, node, env, sources, report):
                     for tag in ['Unknown agent','not found','toolCall','toolResult','errorMessage','ENOENT','not available','error during','subagent_run','Unknown tool','spawn','is not recognized','no_subagent_tool','unsupported','timed out','failed to load','Cannot find','permission','cancelled']:
                         if tag.lower() in text.lower():flags.add(tag)
                 rr['diagnostico']=sorted(flags)
+                rr['frontera_pi']=[json.loads(x) for x in obs.read_text().splitlines()][:15] if obs.exists() else []
+                # Clase de error del mensaje asistente; nunca conservar el cuerpo del error.
+                errors_seen=[]
+                for f in (root/'agent/sessions').rglob('*.jsonl'):
+                    raw=f.read_text(encoding='utf-8',errors='replace')
+                    if str(work).replace('\\','\\\\').lower() not in raw.lower(): continue
+                    for line in raw.splitlines():
+                        m=json.loads(line).get('message',{}); msg=m.get('errorMessage','').lower() if isinstance(m,dict) else ''
+                        if msg: errors_seen.append([t for t in ('context','exceed','token','too large','too long','400','401','403','413','502','timeout','schema','tool','required','invalid','provider','model','length','input','abort','overflow','request','quota','rate','connection') if t in msg])
+                rr['errores_pi']=errors_seen[:8]
                 ours.finish(); rr['job_vacio']=True
             if phase=='active-close' and 'fallo' not in rr:
                 wait(lambda:any(k=='cancelled' and e=='high' for k,e,_ in child.since(offset)),18,'receptor hijo no cancelado')
