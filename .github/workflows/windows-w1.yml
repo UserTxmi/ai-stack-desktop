@@ -99,7 +99,12 @@ jobs:
           }
           if (!$runtime) { throw 'Runtime WebView2 no encontrado' }
           Write-Host "Runtime WebView2: $($runtime.VersionInfo.ProductVersion)"
-          node desktop/frontend/workspace-webview-ci.mjs 'AI Stack ñ' 'Proyecto CI ñ' 'evidencia/webview.txt'
+          $report = Join-Path $PWD 'evidencia/webview.txt'
+          $project = (Resolve-Path 'Proyecto CI ñ').Path
+          $p = Start-Process 'AI Stack ñ/bin/ai-stack-desktop.exe' -ArgumentList @('--ci-webview', "`"$report`"", "`"$project`"") -PassThru
+          if (!$p.WaitForExit(300000)) { $p.Kill(); throw 'Plazo de WebView2 agotado' }
+          Get-Content -LiteralPath $report
+          if ($p.ExitCode -ne 0) { throw 'El selector de la UI oficial no pasó' }
       - name: CPA y receptor sintético
         if: ${{ env.SUITE == 'completa' }}
         run: py -3.12 -B experiments/phase1/run.py --hosted-ci --prepared-runtime 'AI Stack ñ/runtimes' --only cpa

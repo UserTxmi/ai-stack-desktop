@@ -203,11 +203,37 @@ fn main() {
         install,
     };
     let check = shared.clone();
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    let gui_ci = args.len() == 3 && args[0] == "--ci-webview";
     match tauri::Builder::default()
         .manage(shared)
         .setup(move |app| {
             let config = &app.config().app.windows[0];
             WebviewWindowBuilder::from_config(app, config)?.data_directory(webview).build()?;
+            if gui_ci {
+                let app = app.handle().clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    let result = (|| -> Result<(), String> {
+                        let (url, origin) = {
+                            let mut s = check.supervisor.lock().map_err(|_| "Supervisor ocupado")?;
+                            s.start()?;
+                            let w = s.open_workspace(std::path::Path::new(&args[2]))?;
+                            (w.launch.clone(), w.origin.clone())
+                        };
+                        let (tx, rx) = std::sync::mpsc::channel();
+                        workspace::mount(&app, url, origin, Some(tx))?;
+                        let status = rx.recv_timeout(std::time::Duration::from_secs(150)).map_err(|_| "Sin respuesta del DOM WebView2")?;
+                        if status != "W1_DOM_OK" {
+                            return Err(status);
+                        }
+                        Ok(())
+                    })();
+                    let text = result.as_ref().err().map(String::as_str).unwrap_or("WebView2: modelo conectado seleccionado; low y high seleccionados en el DOM oficial.");
+                    let saved = std::fs::write(&args[1], text).is_ok();
+                    app.exit(if saved && result.is_ok() {0} else {1});
+                });
+                return Ok(());
+            }
             tauri::async_runtime::spawn_blocking(move || {
                 if let Ok(mut s) = check.supervisor.lock() { s.set_preparation(w1_supervisor::verify(&check.install)); }
             });

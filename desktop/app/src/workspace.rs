@@ -57,6 +57,10 @@ pub async fn abrir(
         Ok((w.launch.clone(), w.origin.clone()))
     })
     .await?;
+    mount(&app, url, origin, None)
+}
+
+pub fn mount(app: &AppHandle, url: String, origin: String, probe: Option<std::sync::mpsc::Sender<String>>) -> Result<(), String> {
     let win = app.get_window("main").ok_or("Ventana principal ausente")?;
     let builder = WebviewBuilder::new(
         "agent",
@@ -67,13 +71,22 @@ pub async fn abrir(
     .on_navigation(move |u| u.origin().ascii_serialization() == origin)
     .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny)
     .on_download(|_, _| false);
+    let builder = if let Some(tx) = probe {
+        builder.initialization_script(include_str!("webview-ci.js"))
+            .on_document_title_changed(move |_, title| {
+                let parts: Vec<_> = title.split(':').collect();
+                if title == "W1_DOM_OK" || matches!(parts.as_slice(), ["W1_DOM_ERROR", "catálogo" | "modelo" | "low" | "high", status] if status.parse::<u16>().is_ok()) {
+                    let _ = tx.send(title);
+                }
+            })
+    } else { builder };
     win.add_child(
         builder,
         LogicalPosition::new(0., TOP),
         LogicalSize::new(640., 420.),
     )
     .map_err(|e| e.to_string())?;
-    resize(&app).map_err(|e| e.to_string())
+    resize(app).map_err(|e| e.to_string())
 }
 #[tauri::command]
 pub async fn vista(app: AppHandle, visible: bool) -> Result<(), String> {
