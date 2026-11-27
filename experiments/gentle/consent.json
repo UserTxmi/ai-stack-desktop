@@ -1,0 +1,12 @@
+{
+  "commit": "ad183931612106fe1cee05d53979e1caef725cf5",
+  "url": "https://github.com/Gentleman-Programming/gentle-shell/commit/ad183931612106fe1cee05d53979e1caef725cf5.diff",
+  "sha256": "ab6b910b3457fe4c8b602b918bff218f44ea9da28d3498a0a4511cd17938c72c",
+  "files": {
+    "extensions/gentle-ai.ts": "80dee93bb2593c340800c7ec9ab5ec5c5e78dae8dcedea679661c10f55d50c75",
+    "extensions/skill-registry.ts": "459837e44816d9a88faa8cff1ccfc123b6a2ea17a3562892bd0cbd77f7dc92c4",
+    "lib/auto-permission-runtime.ts": "2cbec9ce2d68e96b32e03bf4a985c543740f5860336a3eccdec807c844ebcd67",
+    "lib/path-consent-fence.ts": "f9bc432fc79a94d76bcdfd1dbd0bfda7501f08ab533b4ced56ce37b3398f72e3",
+    "lib/session-worktree-registry.ts": "176b23b1079190976d9b72fa3983887675baca00fa4330c35f4d48d20e1b88a4"
+  }
+}

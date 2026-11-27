@@ -1,5 +1,6 @@
 """PoC desechable Windows x64. Publica sólo contadores, marcas y resultados."""
 import contextlib
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -42,6 +43,12 @@ def prepare(root, node):
     env = env_for(root/'build', node)
     subprocess.run([node, node.parent/'node_modules/npm/bin/npm-cli.js', 'ci', '--ignore-scripts',
                     '--no-audit', '--no-fund'], cwd=root, env=env, check=True)
+    patch=json.loads((HERE/'consent.json').read_bytes()); pkg=root/'node_modules/gentle-pi'
+    # git apply dentro de un árbol npm no versionado. Sólo los cinco archivos oficiales.
+    subprocess.run([root/'git/cmd/git.exe','-c','core.autocrlf=false','apply',
+                    *['--include='+p for p in patch['files']], verified(patch)],cwd=pkg,env=env,check=True)
+    for path,digest in patch['files'].items():
+        check(hashlib.sha256((pkg/path).read_bytes()).hexdigest()==digest,'postimagen del backport no reconocida')
     # El instalador oficial Windows valida el módulo Go, versión, suma y metadatos del EXE.
     env['PATH'] = str(Path(shutil.which('go.exe')).parent)+';'+env['PATH']
     env['TEMP'] = env['TMP'] = str(root/'tmp'); (root/'tmp').mkdir()
