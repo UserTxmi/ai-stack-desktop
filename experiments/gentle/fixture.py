@@ -27,6 +27,11 @@ class GentleHandler(Handler):
         users = json.dumps([m.get('content') for m in data.get('messages', []) if m.get('role') == 'user'])
         tags = [t for t in ('GS-LOW', 'GS-HIGH', 'GS-CHILD', 'GS-DELEGATE', 'GS-CANCEL', 'GS-CONPTY', 'GS-GPUI') if t in users]
         self.server.markers.append((tags, data.get('reasoning_effort')))
+        names=[t.get('function',{}).get('name','') for t in data.get('tools',[])]
+        if self.server.delegate and 'GS-DELEGATE' in tags:
+            self.server.calls.append({'count':len(names),'agent':sum(n.startswith('subagent_') for n in names),
+                'has':sorted(set(names)&{'read','bash','codemode','gentle_ui','ask_user_question','mem_save','tool_search','subagent_run'}),
+                'stream':bool(data.get('stream'))})
         if self.server.consent_path and 'GS-CHILD' in tags:
             replies = [str(m.get('content')) for m in data['messages'] if m.get('role')=='tool']
             if replies:
@@ -35,7 +40,7 @@ class GentleHandler(Handler):
             elif not self.server.consent_offered:
                 self.server.consent_offered = True
                 return self.offer(data,'read',{'path':str(self.server.consent_path)})
-        if self.server.delegate and 'GS-DELEGATE' in tags and data['model'] == MODEL:
+        if self.server.delegate and 'GS-DELEGATE' in tags and 'subagent_run' in names and data['model'] == MODEL:
             self.server.delegate = False
             args = {'agent': 'gentle-ai-explore', 'mode': 'task', 'task': 'GS-CHILD. Reply LAB only.'}
             return self.offer(data,'subagent_run',args)

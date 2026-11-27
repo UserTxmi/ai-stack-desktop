@@ -104,7 +104,7 @@ def run(root, node, report, stack):
     password = secrets.token_hex(24)
     omni = RUNTIME/'package/dist'
     oe = env_for(root/'omni-home', node)
-    oe.update(PORT=str(gateway.port), HOSTNAME='127.0.0.1', OMNIROUTE_SERVER_HOST='127.0.0.1',
+    oe.update(PORT=str(gateway.port), HOSTNAME='127.0.0.1', OMNIROUTE_SERVER_HOST='127.0.0.1', OMNIROUTE_MAX_TOOLS_LIMIT='512',
               DATA_DIR=str(root/'omni-data'), NODE_ENV='production', INITIAL_PASSWORD=password,
               REQUIRE_API_KEY='true', JWT_SECRET=secrets.token_hex(32), STORAGE_ENCRYPTION_KEY=secrets.token_hex(32),
               NEXT_PUBLIC_BASE_URL=gateway.origin, NEXT_TELEMETRY_DISABLED='1', ENABLE_REQUEST_LOGS='false', APP_LOG_TO_FILE='false')
