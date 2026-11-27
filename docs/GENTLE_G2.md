@@ -19,6 +19,8 @@ El [informe del run cancelado 45930024545](https://github.com/UserTxmi/ai-stack-
 
 El workflow completo queda sólo bajo `workflow_dispatch`; no volverá a ejecutarse por `push`. La corrección focal cambia únicamente el contexto anunciado por el fixture a 262.144 y prueba coexistencia, `deny`, `allow` y `active-close`. No aumenta plazos ni repite G1/W1. [Workflow focal](../.github/workflows/windows-g2-focal.yml).
 
+La [ejecución focal 1/2](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45931868127) falló antes de abrir la ventana propia: el camino corto llamó G2 antes de definir `GENTLE_SHELL_BIN` (`KeyError`, G2 vacío). Es un error de orden del laboratorio, no un resultado de producto. La segunda ejecución será la última autorizada en esta sesión.
+
 La prueba focal exige en la ventana denegación sin lectura, aceptación con lectura y pérdida del propietario con un hijo que ya haya emitido su primer fragmento. No acepta una llamada sintética a una herramienta que el modelo no recibió. El informe no exporta sesiones, cabeceras, cuerpos ni perfiles.
 
 ## Integración preparada

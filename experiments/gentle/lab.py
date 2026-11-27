@@ -150,6 +150,7 @@ def run(root, node, report, stack, g2_only=False):
     dump(home/'settings.json', {'defaultProvider':'omniroute','defaultModel':'main/'+MODEL,'defaultThinkingLevel':'low',
          'enabledModels':['omniroute/*'], 'shellPath':str(shell), 'packages':[str(root/'node_modules/gentle-engram')]})
     dump(config/'models.json', {'gentle-ai-explore':{'model':'omniroute/child/'+MODEL,'thinking':'high'}})
+    env['GENTLE_SHELL_BIN'] = str(root/'node_modules/.bin/gentle-shell.cmd')
     report['catalogo_gateway'] = sorted(targets)
     if g2_only:
         from g2 import verify
@@ -196,7 +197,6 @@ def run(root, node, report, stack, g2_only=False):
         finally:
             j.finish()
     # Mismo perfil y proyecto, ventanas separadas. Arranque observable, no un benchmark de usabilidad.
-    env['GENTLE_SHELL_BIN'] = str(root/'node_modules/.bin/gentle-shell.cmd')
     providers['main'].mode = 'normal'
     for label, cmd in [('conpty',[sys.executable,'-IB',HERE/'pty_probe.py',root/'pty',node,launcher]),
                        ('gpui',[next((root/'gpui').rglob('gentle-shell-gpui.exe')),project,'--prompt','GS-GPUI'])]:
