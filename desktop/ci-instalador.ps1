@@ -16,12 +16,14 @@ function Snapshot($rootPid) {
         CpuSeconds=(($all|Measure-Object UserModeTime -Sum).Sum+($all|Measure-Object KernelModeTime -Sum).Sum)/1e7}
 }
 function Open-Stack($exe,$root,$label) {
-    $timer=[Diagnostics.Stopwatch]::StartNew();$out="$env:RUNNER_TEMP\stack-out.txt";$err="$env:RUNNER_TEMP\stack-err.txt"
+    $timer=[Diagnostics.Stopwatch]::StartNew();$out="$env:RUNNER_TEMP\stack-out.txt";$err="$env:RUNNER_TEMP\stack-err.txt";$last=''
     $p=Start-Process $exe -ArgumentList '--ci-cuentas' -RedirectStandardOutput $out -RedirectStandardError $err -PassThru
     $profile="$root\datos\cuentas-ci"; $sessionDir="$profile\gentle\agent\sessions"
     try {
         while (!(Select-String -LiteralPath $out -SimpleMatch 'GPUI lista' -Quiet)) {
-            if ($p.HasExited -or $timer.Elapsed.TotalMinutes -gt 16){throw 'No llegó a GPUI'}; Start-Sleep -Milliseconds 300
+            $stage=Get-Content "$root\preparacion\inicio\estado.txt" -Tail 1 -ErrorAction SilentlyContinue
+            if($stage -and $stage -ne $last){$last=$stage; Write-Host ('Etapa {0} {1:n0}s: {2}' -f $label,$timer.Elapsed.TotalSeconds,($stage -split 'Se requiere preparación:')[0])}
+            if ($p.HasExited -or $timer.Elapsed.TotalMinutes -gt 22){throw 'No llegó a GPUI'}; Start-Sleep -Milliseconds 500
         }
         $ready=[math]::Round($timer.Elapsed.TotalSeconds,1)
         $settings=Get-Content "$profile\gentle\agent\settings.json" -Raw|ConvertFrom-Json
@@ -42,6 +44,11 @@ function Open-Stack($exe,$root,$label) {
     finally {if (!$p.HasExited){$p.Kill();$p.WaitForExit()};$p.Dispose()}
 }
 $exe="$app\bin\ai-stack-gentle.exe"; $argsDir="/DIR=`"$app`""
+# Preparar una vez la referencia en el volumen temporal. La ubicación instalada
+# predeterminada está en C: en el runner y falsearía la comparación con D:.
+Open-Stack "$Portable\bin\ai-stack-gentle.exe" $Portable '006-limpio'
+Open-Stack "$Portable\bin\ai-stack-gentle.exe" $Portable '006-reapertura'
+py -3.12 -B desktop/medir-disco.py $Portable
 Installer $Setup @($argsDir)
 foreach($link in @([Environment]::GetFolderPath('Desktop'),[Environment]::GetFolderPath('Programs'))){if(!(Test-Path "$link\AI Stack Desktop.lnk")){throw 'Acceso directo ausente'}}
 Open-Stack $exe $fresh '007-limpio'
@@ -49,9 +56,6 @@ Open-Stack $exe $fresh '007-reapertura'
 py -3.12 -B desktop/medir-disco.py $fresh
 Installer "$app\unins000.exe" @()
 if (!(Test-Path "$fresh\datos\cuentas-ci\claves.dpapi") -or (Test-Path $exe)){throw 'Desinstalación incorrecta'}
-Open-Stack "$Portable\bin\ai-stack-gentle.exe" $Portable '006-limpio'
-Open-Stack "$Portable\bin\ai-stack-gentle.exe" $Portable '006-reapertura'
-py -3.12 -B desktop/medir-disco.py $Portable
 $dir="$Portable\datos\cuentas-ci";$vault=(Get-FileHash "$dir\claves.dpapi").Hash
 $session=Get-ChildItem "$dir\gentle\agent\sessions" -Recurse -Filter *.jsonl|Select-Object -First 1
 $marca=(Get-FileHash "$dir\gentle\launcher.json").Hash
