@@ -1,4 +1,8 @@
-# AI Stack Desktop · prototipo Windows x64 `0.0.5-dev`
+# AI Stack Desktop · prototipo Windows x64 `0.0.6-dev`
+
+**[Descargar 0.0.6-dev para Windows x64 sin cuenta](https://nightly.link/UserTxmi/ai-stack-desktop/actions/runs/45941108001/AI-Stack-Desktop-0.0.6-dev-win-x64.zip)** · [Cuentas, paneles y migración](desktop/CUENTAS.md) · [CI Windows x64](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45941108001). Extraiga en una carpeta NTFS privada nueva y abra `bin\ai-stack-gentle.exe`. Acceso a CPA y OmniRoute desde el icono de notificación. SHA-256: `4e09776b906ad5eeaa209c8a47ad0c51945ae34be0e6e0ff0c3466861f2561dd`. Retención hasta el 27 de diciembre de 2026. CI verificó setup, arranque sin cuentas, inicio/cancelación OAuth, turno sintético, esfuerzos y reapertura; la conexión con una cuenta real se valida en Windows 11.
+
+**Recuperación: 0.0.5-dev**, aprobada manualmente en Windows 11, commit `9625068`.
 
 **[Descargar 0.0.5-dev GPUI para Windows x64 sin cuenta](https://nightly.link/UserTxmi/ai-stack-desktop/actions/runs/45934314914/AI-Stack-Desktop-0.0.5-dev-win-x64.zip)** · [Guía para Windows 11](desktop/PROBAR-GPUI.md) · [Evidencia G2 y del ZIP](docs/GENTLE_G2.md). Extraiga el ZIP en una carpeta nueva y abra `bin\ai-stack-gentle.exe`. La primera apertura prepara las dependencias automáticamente. SHA-256: `fd13d118e919f1987928fe0e315b8ba622e8b6389fb0f77219270ba228660aaf`.
 
