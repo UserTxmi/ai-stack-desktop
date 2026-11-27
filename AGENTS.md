@@ -1,5 +1,7 @@
 # Instrucciones del proyecto
 
+**Corrección 2C `0.0.4-dev`:** la VPS detectó la dependencia VC++ x64 y el selector vacío en 0.0.3-dev. La [regresión del selector en WebView2 y descarga anónima](docs/PHASE2C_REPORT.md) están verificadas en Windows Server. Falta repetir la prueba interactiva en la VPS; no avanzar de fase.
+
 **Revisión 2C:** el usuario aprobó la prueba interactiva básica de 2B y autorizó `0.0.3-dev`: workspace local oficial con proveedor sintético, servidor supervisado y ZIP portable en Actions. [Evidencia 2C](docs/PHASE2C_REPORT.md). El instalador definitivo y 1B-Desktop siguen fuera de este alcance.
 
 - Trabajar y documentar en español. El estado del producto, sus contratos y sus decisiones viven en `docs/`; comenzar por `README.md`, `docs/DECISIONS.md` y `docs/ROADMAP.md`.

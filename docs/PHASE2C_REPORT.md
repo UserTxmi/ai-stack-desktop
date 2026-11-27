@@ -1,6 +1,10 @@
-# Fase 2C · Workspace OpenCode · 0.0.3-dev
+# Fase 2C · Workspace OpenCode · 0.0.4-dev
 
 ## Bloqueo interactivo y corrección 0.0.4-dev
+
+**[ZIP sin autenticación](https://nightly.link/UserTxmi/ai-stack-desktop/actions/runs/45916757368/AI-Stack-Desktop-0.0.4-dev-win-x64.zip)** · [Suite completa aprobada](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45916757368) · commit del EXE `e1d05e721022fc5e1f993150f1306cd221153f9e`. En Windows Server 2025 x64, WebView2 `157.0.4341.46` abrió el proyecto Unicode, seleccionó el modelo por su ID y comprobó el cambio del control de esfuerzo a `low` y después a `high`. Pasaron también preparación, recuperación, cierre y regresiones completas W1. Esta automatización usa el DOM real con eventos sintéticos; no certifica el diálogo COM, el foco ni la experiencia en la VPS.
+
+Se descargó el ZIP sin credenciales (HTTP 200, **3 443 537 bytes**); su SHA-256 `90cc1b35d4178829d7e281fc79d87508f1eb88f28c576ab31b9d6de1c1b912bf` coincide con Actions. Se verificaron los once checksums interiores, el commit, el informe del selector y el EXE PE x64 (`a7eb601c45d3294b39c9a71d22a3d5de112abd01d2dfaee2fc740a5d1c56f229`). El artefacto caduca el **27-12-2026 a las 00:39 UTC**.
 
 La prueba en la VPS Windows confirmó preparación, inicio y renderizado tras instalar Visual C++ Redistributable x64. El selector seguía vacío en una carpeta seleccionada, sin cuentas manuales. No se registró una traza de red de esa VPS.
 
@@ -19,6 +23,8 @@ La prueba en la VPS Windows confirmó preparación, inicio y renderizado tras in
 - No están habilitados PTY, paneles administrativos, configuración de proveedores desde la vista, explorador general de archivos ni enlaces externos. Para cambiar de carpeta se usa Proyectos en el shell. Los proyectos de ensayo no cargan su configuración de proveedores (`OPENCODE_DISABLE_PROJECT_CONFIG`). Los Jobs no son un sandbox del sistema operativo para código que el usuario autorice a ejecutar.
 
 ## Evidencia
+
+Histórico: la tabla y los enlaces siguientes corresponden al **0.0.3-dev anterior al informe de la VPS**.
 
 **[Descargar ZIP portable Windows x64](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45909962581/artifacts/15159299661)** · [Run completo aprobado](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45909962581) · [commit compilado `382afe0`](https://github.com/UserTxmi/ai-stack-desktop/commit/382afe0e91043497a39df4892991a776a55fdd08). Artefacto de Actions disponible con sesión iniciada hasta el **26-12-2026 23:27 UTC**.
 
