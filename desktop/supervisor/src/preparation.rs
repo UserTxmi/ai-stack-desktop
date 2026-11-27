@@ -189,7 +189,6 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
             0,
             None,
         );
-        self.install.check_layout()?;
         discard(&self.stage)?;
         folder(&self.stage)?;
         self.owns_stage = true;
@@ -216,9 +215,15 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
             0,
             None,
         );
-        verify_workspace_links(&runtime)?;
-        let env = self.build_env(&runtime.join(NODE))?;
-        self.sqlite(&runtime, &env)?;
+        // Un componente reutilizado ya verificó sus enlaces. En modo GPUI, la
+        // apertura real de la base por OmniRoute verifica SQLite al arrancar.
+        if self.stats.installed > 0 {
+            verify_workspace_links(&runtime)?;
+        }
+        if !components.iter().any(|(id, _)| *id == "gpui") {
+            let env = self.build_env(&runtime.join(NODE))?;
+            self.sqlite(&runtime, &env)?;
+        }
         self.report("W1", "Verificación completada", 0, None);
         Ok(())
     }
@@ -334,8 +339,9 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
                     fs::create_dir_all(target.parent().unwrap()),
                     "Crear destino de SQLite",
                 )?;
+                discard(&target)?;
                 disk(
-                    fs::copy(self.stage.join(&prebuild), target),
+                    fs::hard_link(self.stage.join(&prebuild), target),
                     "Preparar SQLite nativo",
                 )?;
             }
@@ -378,12 +384,12 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
             Duration::from_secs(30),
             "Consentimiento",
         )?;
-        let src = self.install.root().join("bin/gentle-ai.exe");
+        let src = self.install.bin.join("gentle-ai.exe");
         let bundle = pkg.join(".gentle-ai/v5.0.0");
         fs::create_dir_all(&bundle).safe()?;
         fs::copy(src, bundle.join("gentle-ai.exe")).safe()?;
         fs::copy(
-            self.install.root().join("bin/integrity.json"),
+            self.install.bin.join("integrity.json"),
             bundle.join("integrity.json"),
         )
         .safe()?;

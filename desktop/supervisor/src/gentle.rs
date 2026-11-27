@@ -1,6 +1,28 @@
 use super::*;
 use accounts::{atomic, Accounts};
 
+fn write_changed(p: &Path, bytes: &[u8]) -> Result<()> {
+    if install::item(p)?.is_some() && fs::read(p).safe()? == bytes {
+        return Ok(());
+    }
+    atomic(p, bytes)
+}
+
+fn chat_default(cfg: &mut Value, models: &[Value]) {
+    if models.iter().any(|m| m["id"] == cfg["defaultModel"]) {
+        return;
+    }
+    if let Some(m) = ["cpa/gpt-6.2-sol", "cpa/gpt-6.2-astra"]
+        .iter()
+        .find_map(|id| models.iter().find(|m| m["id"].as_str() == Some(*id)))
+        .or(models.first())
+    {
+        cfg["defaultModel"] = m["id"].clone();
+    } else if let Some(o) = cfg.as_object_mut() {
+        o.remove("defaultModel");
+    }
+}
+
 fn read_json(p: &Path) -> Result<Value> {
     if install::item(p)?.is_none() {
         return Ok(json!({}));
@@ -135,7 +157,7 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
     let node = runtime.join(NODE);
     let bootstrap = environment(&install.temporary().join("inicio"), &node)?;
     let status = install.temporary().join("inicio/estado.txt");
-    let mut splash = if !ci {
+    let mut splash = if !ci && !runtime.join("gentle").is_dir() {
         Some(Job::launch(Spec{exe:PathBuf::from(&bootstrap["SystemRoot"]).join("System32/WindowsPowerShell/v1.0/powershell.exe"),args:vec!["-NoProfile".into(),"-STA".into(),"-Command".into(),"Add-Type -AssemblyName System.Windows.Forms;$f=New-Object Windows.Forms.Form;$f.Text='AI Stack Desktop · Preparando';$f.Width=440;$f.Height=110;$l=New-Object Windows.Forms.Label;$l.Dock='Fill';$f.Controls.Add($l);$t=New-Object Windows.Forms.Timer;$t.Interval=750;$t.Add_Tick({try{$l.Text=[IO.File]::ReadAllText((Join-Path (Get-Location) 'estado.txt'))}catch{}});$t.Start();[void]$f.ShowDialog()".into()],input:String::new()},status.parent().unwrap(),&bootstrap)?)
     } else {
         None
@@ -179,7 +201,17 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
     let engram = runtime.join("engram/engram.exe");
     let go = runtime.join("go/go");
     let modules = runtime.join("gentle/node_modules");
-    let launcher = std::env::current_exe().safe()?;
+    let mut launcher = std::env::current_exe().safe()?;
+    let previous = install.root().join("bin/ai-stack-gentle.exe");
+    // En un perfil 0.0.6 reutilizado, sus shims ya ofrecen el mismo contrato.
+    // Conservarlos permite volver al binario original sin tocar la recuperación.
+    if previous != launcher
+        && install::item(&previous)?.is_some()
+        && preparation::digest(&previous)?
+            == "6d4c011cd36c398adad9618819dabfbb1b6a81eea11d6b493caba6d303c166ee"
+    {
+        launcher = previous;
+    }
     for (name, source) in [
         ("node.exe", &node),
         ("go.exe", &go.join("bin/go.exe")),
@@ -188,11 +220,21 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         ("setup-companion.exe", &launcher),
     ] {
         let link = bin.join(name);
-        if install::item(&link)?.is_none() {
-            fs::hard_link(source, &link).safe()?;
+        if install::item(&link)?.is_some() {
+            if same_file::is_same_file(source, &link).safe()? {
+                continue;
+            }
+            if source == &launcher && preparation::digest(&link)? == preparation::digest(source)? {
+                continue;
+            }
+            fs::remove_file(&link).safe()?;
         }
-        if preparation::digest(&link)? != preparation::digest(source)? {
-            return Err(format!("Toolchain privada incorrecta: {name}"));
+        if fs::hard_link(source, &link).is_err() {
+            // El directorio de programas elegido puede estar en otro volumen.
+            if source != &launcher {
+                return Err(format!("No se pudo enlazar {name}"));
+            }
+            atomic(&link, &fs::read(source).safe()?)?;
         }
     }
     let port = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
@@ -266,15 +308,16 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
     cfg["enabledModels"] = json!(["omniroute/*"]);
     cfg["defaultProvider"] = json!("omniroute");
     cfg["shellPath"] = json!(runtime.join("git/usr/bin/sh.exe"));
-    if cfg["defaultModel"].is_null() || ci {
-        if let Some(m) = models.first() {
-            cfg["defaultModel"] = m["id"].clone();
-        }
-    }
+    chat_default(&mut cfg, &models);
     if ci {
         cfg["defaultThinkingLevel"] = json!("low");
     }
-    atomic(&settings, &serde_json::to_vec(&cfg).safe()?)?;
+    write_changed(&settings, &serde_json::to_vec(&cfg).safe()?)?;
+    install::folder(&home.join("extensions"))?;
+    write_changed(
+        &home.join("extensions/ai-stack-panel.ts"),
+        include_bytes!("panel-extension.ts"),
+    )?;
     let gui = path("desktop/settings.json");
     if install::item(&gui)?.is_none() {
         atomic(
@@ -323,6 +366,7 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         j.stop()?;
     }
     println!("GPUI lista");
+    let mut current_models = models;
     let mut due = Instant::now() + Duration::from_secs(12);
     while ui.alive() && ui.pids()?.contains(&gui_pid) {
         if !mem.alive()
@@ -337,7 +381,19 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         if Instant::now() >= due || signal.exists() {
             let _ = fs::remove_file(&signal);
             let delay = match accounts.sync(&mut sup, &home) {
-                Ok(_) => 12,
+                Ok(next) => {
+                    if next != current_models {
+                        let mut cfg = read_json(&settings)?;
+                        chat_default(&mut cfg, &next);
+                        write_changed(&settings, &serde_json::to_vec(&cfg).safe()?)?;
+                        current_models = next;
+                    }
+                    if current_models.is_empty() {
+                        12
+                    } else {
+                        60
+                    }
+                }
                 Err(e) if e == "HTTP 401" || e == "HTTP 403" => {
                     return Err("Acceso revocado; vuelva a abrir la aplicación".into())
                 }
@@ -351,7 +407,7 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
             };
             due = Instant::now() + Duration::from_secs(delay);
         }
-        sleep(Duration::from_millis(350));
+        sleep(Duration::from_secs(1));
     }
     println!("Cerrando GPUI y sus descendientes");
     ui.stop()?;

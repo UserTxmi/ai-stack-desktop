@@ -110,6 +110,7 @@ fn local_root(dir: &Path) -> Result<PathBuf> {
 
 pub struct Install {
     root: PathBuf,
+    pub(crate) bin: PathBuf,
     _owner: File,
 }
 
@@ -126,7 +127,20 @@ impl Install {
         if !item(bin)?.is_some_and(|m| m.is_dir()) {
             return Err("La carpeta bin no existe".into());
         }
-        Self::open(bin.parent().ok_or("Falta la carpeta de instalación")?)
+        let pointer = bin.join("perfil.txt");
+        if item(&pointer)?.is_some() {
+            let text = fs::read_to_string(pointer).safe()?;
+            let state = Path::new(text.trim_start_matches('\u{feff}').trim_end());
+            if !state.is_absolute() {
+                return Err("Ruta de perfil instalada inválida".into());
+            }
+            folder(state)?;
+            let mut install = Self::open(state)?;
+            install.bin = bin.to_owned();
+            Ok(install)
+        } else {
+            Self::open(bin.parent().ok_or("Falta la carpeta de instalación")?)
+        }
     }
 
     pub(crate) fn open(root: &Path) -> Result<Self> {
@@ -170,6 +184,7 @@ impl Install {
             );
         }
         let install = Self {
+            bin: root.join("bin"),
             root,
             _owner: owner,
         };

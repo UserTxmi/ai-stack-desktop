@@ -3836,6 +3836,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "rand 0.8.5",
+ "same-file",
  "serde",
  "serde_json",
  "sha2",

@@ -1,0 +1,11 @@
+# AI Stack Desktop 0.0.7-dev · Windows 11 x64
+
+1. Cierre Gentle Shell. Ejecute **AI-Stack-Desktop-0.0.7-dev-win-x64-Setup.exe** y elija una carpeta de programas de su usuario. El instalador comprueba Visual C++ x64 y ejecuta el redistribuible firmado de Microsoft si hace falta (puede pedir elevación). La interfaz GPUI es nativa; los paneles usan el navegador Edge de Windows, no el runtime WebView2.
+2. **Si ya usa 0.0.6-dev**, seleccione la raíz del portable privado en la página **Cuentas, perfiles y sesiones**, no `datos\cuentas\auth` ni la carpeta `bin`. Se reutiliza el mismo perfil sin cambiar de usuario, rutas ni puertos y sin copiar credenciales. Conserve esa carpeta en su sitio. Para probar por separado, acepte el perfil nuevo propuesto. Antes de actualizar, conviene tener una copia privada del portable cerrado.
+3. Abra **AI Stack Desktop** desde Inicio o el escritorio. El primer arranque de un perfil nuevo prepara las dependencias con internet; reserve varios GiB en NTFS. Escriba **`/cuentas`**, **`/cliproxyapi`** o **`/omniroute`** en Gentle Shell. También puede usar **Cuentas y administración** desde el icono de notificación, incluso sin una sesión de chat. Tras conectar la cuenta, pulse **Sincronizar ahora** y abra una sesión nueva.
+
+## Ubicaciones y recuperación
+
+La raíz nueva es `%LOCALAPPDATA%\AI Stack Desktop\Perfil`. Si eligió su portable, las rutas siguientes son relativas a él. `datos\cuentas\auth` contiene los JSON de CPA; `datos\cuentas\claves.dpapi` protege las claves de servicio para ese usuario Windows; `datos\cuentas\omni` aloja el gateway y `datos\cuentas\gentle` los perfiles, proyectos y sesiones. La carpeta `cuentas` tiene una ACL privada. No publique ni sincronice esta raíz. `bin\perfil.txt` en la carpeta de programas indica la raíz activa sin contener claves.
+
+Actualice con la aplicación cerrada: el instalador recuerda la raíz. **Desinstalar** desde Configuración → Aplicaciones quita los binarios instalados y los accesos directos, pero conserva el perfil, los runtimes y las descargas. Para volver a 0.0.6-dev, cierre la versión instalada y abra `bin\ai-stack-gentle.exe` en la carpeta del portable. Si ambas versiones apuntan al mismo perfil, no las ejecute simultáneamente.

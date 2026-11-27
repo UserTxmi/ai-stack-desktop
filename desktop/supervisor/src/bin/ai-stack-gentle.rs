@@ -47,14 +47,14 @@ fn main() {
     let result = w1_supervisor::Install::beside_exe()
         .and_then(|install| w1_supervisor::run_gentle(std::sync::Arc::new(install), prompt));
     if let Err(e) = result {
-        eprintln!("AI Stack Desktop 0.0.6-dev: {e}");
+        eprintln!("AI Stack Desktop 0.0.7-dev: {e}");
         if std::env::args().len() == 1 {
             let msg: Vec<u16> = e.encode_utf16().chain([0]).collect();
             unsafe {
                 windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW(
                     std::ptr::null_mut(),
                     msg.as_ptr(),
-                    windows_sys::w!("AI Stack Desktop 0.0.6-dev"),
+                    windows_sys::w!("AI Stack Desktop 0.0.7-dev"),
                     16,
                 );
             }

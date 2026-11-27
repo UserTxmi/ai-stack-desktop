@@ -1,0 +1,40 @@
+name: Windows x64 · Instalador 0.0.7-dev
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  instalador:
+    runs-on: windows-2025
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Compilar supervisor y preparar payload público
+        run: |
+          cargo build --manifest-path desktop/Cargo.toml --release --locked -p w1-supervisor --bin ai-stack-gentle
+          if ($LASTEXITCODE){exit $LASTEXITCODE}
+          $zip="$env:RUNNER_TEMP/recuperacion.zip"
+          Invoke-WebRequest 'https://nightly.link/UserTxmi/ai-stack-desktop/actions/runs/45941108001/AI-Stack-Desktop-0.0.6-dev-win-x64.zip' -OutFile $zip
+          if ((Get-FileHash $zip).Hash -ne '4e09776b906ad5eeaa209c8a47ad0c51945ae34be0e6e0ff0c3466861f2561dd'){throw 'Recuperación incorrecta'}
+          Expand-Archive $zip "$env:RUNNER_TEMP/AI06"
+          New-Item -ItemType Directory entrega-gentle/bin | Out-Null
+          Copy-Item "$env:RUNNER_TEMP/AI06/bin/gentle-ai.exe","$env:RUNNER_TEMP/AI06/bin/integrity.json",desktop/target/release/ai-stack-gentle.exe entrega-gentle/bin
+          Copy-Item "$env:RUNNER_TEMP/AI06/LICENSE-GentleAI.txt",desktop/INSTALAR.md,desktop/gentle-assets.json,experiments/phase1/versions.json entrega-gentle
+          py -3.12 -B desktop/notices.py entrega-gentle/TERCEROS.txt --gentle
+      - name: Construir instalador con VC++ de Microsoft
+        run: |
+          Invoke-WebRequest 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile vc_redist.x64.exe
+          $sig=Get-AuthenticodeSignature vc_redist.x64.exe
+          if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation,'){throw 'Firma de VC++ inválida'}
+          & "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" desktop/instalador.iss
+      - name: Instalación, turnos sintéticos, mediciones, actualización y desinstalación
+        run: .\desktop\ci-instalador.ps1 -Setup (Get-ChildItem salida/*.exe).FullName -Portable "$env:RUNNER_TEMP\AI06"
+      - name: Entregar únicamente instalador verificado
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: AI-Stack-Desktop-0.0.7-dev-instalador
+          path: salida/*.exe
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 90

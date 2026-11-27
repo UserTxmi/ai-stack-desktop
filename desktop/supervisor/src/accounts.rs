@@ -54,7 +54,7 @@ fn powershell(env: &Env) -> PathBuf {
 }
 
 /// ACL heredable aplicada antes de crear archivos OAuth, SQLite o configuración.
-fn private_dir(path: &Path) -> Result<()> {
+pub(crate) fn private_dir(path: &Path) -> Result<()> {
     use std::os::windows::{
         ffi::OsStrExt,
         io::{AsRawHandle, FromRawHandle, OwnedHandle},
@@ -151,7 +151,6 @@ impl Accounts {
         let node = install.runtime().join(NODE);
         let name = if ci { "cuentas-ci" } else { "cuentas" };
         let folder = install.root().join("datos").join(name);
-        let env = environment(&install.temporary().join("acl"), &node)?;
         private_dir(&folder)?;
         for dir in ["auth", "omni", "home-cpa", "home-omni"] {
             install::folder(&folder.join(dir))?;
@@ -188,6 +187,7 @@ impl Accounts {
         let config = folder.join("cpa.yaml");
         let mut initial = json!({"server":{"host":"127.0.0.1","port":c.port},"management":{"secret-key":v.admin,"allow-remote":false,"disable-auto-update-panel":true},"access":{"api-keys":[v.cpa]},"oauth":{"auth-dir":folder.join("auth")},"routing":{"strategy":"fill-first","session-affinity":true,"session-affinity-rebind-on":"never","retry":{"request-retry":0,"max-retry-credentials":1},"cooldown":{"disable-cooling":false,"save-cooldown-status":true}}});
         if ci {
+            let env = environment(&folder.join("home-cpa"), &node)?;
             // Se añade únicamente en el perfil desechable de Actions; nunca se abre el perfil real.
             let f = bind(0)?;
             let port = f.local_addr().safe()?.port();
@@ -201,7 +201,7 @@ impl Accounts {
             api.auth = format!("Bearer {key}");
             ready(&mut job, &mut api, "/v1/models")?;
             sup.fixture = Some(job);
-            initial["api-keys"] = json!({"openai-compatibility":[{"name":"fixture","base-url":format!("{}/v1",api.origin()),"keys":[{"api-key":key}],"models":[{"name":"lab-reasoner","alias":"lab-reasoner","thinking":{"levels":["low","high"]}}]}]});
+            initial["api-keys"] = json!({"openai-compatibility":[{"name":"fixture","base-url":format!("{}/v1",api.origin()),"keys":[{"api-key":key}],"models":[{"name":"codex-auto-review","alias":"codex-auto-review"},{"name":"lab-reasoner","alias":"lab-reasoner","thinking":{"levels":["low","high"]}}]}]});
         }
         if ci || install::item(&config)?.is_none() {
             atomic(&config, &serde_json::to_vec(&initial).safe()?)?;
@@ -385,6 +385,11 @@ impl Accounts {
         for r in available {
             let raw = field(r, "/id")?;
             let id = format!("cpa/{raw}");
+            // Pi también tiene su propia elección de reserva cuando falta defaultModel.
+            // No anunciar como chat una ruta conocida de otro tipo (CPA la conserva).
+            if !chat_route(&raw) {
+                continue;
+            }
             let Some(grow) = rows(&gateway, "data")?.iter().find(|m| m["id"] == id) else {
                 continue;
             };
@@ -441,4 +446,29 @@ impl Accounts {
         self.panel=Some(Job::launch(Spec{exe:powershell(env),args:vec!["-NoProfile".into(),"-NonInteractive".into(),"-STA".into(),"-Command".into(),script.into()],input:json!({"cpa":self.v.ports[0],"omni":self.v.ports[1],"admin":self.v.admin,"password":self.v.password,"signal":signal,"open":open}).to_string()},&self.folder,env)?);
         Ok(())
     }
+}
+
+fn chat_route(raw: &str) -> bool {
+    !raw.to_ascii_lowercase()
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .any(|part| {
+            matches!(
+                part,
+                "review"
+                    | "reviewer"
+                    | "embedding"
+                    | "embeddings"
+                    | "rerank"
+                    | "reranker"
+                    | "transcribe"
+                    | "transcription"
+                    | "tts"
+                    | "whisper"
+                    | "moderation"
+                    | "image"
+                    | "realtime"
+                    | "audio"
+                    | "video"
+            )
+        })
 }

@@ -29,7 +29,7 @@ def main(out, gentle=False):
             seen.add(node)
             todo.extend(d['pkg'] for d in nodes[node]['deps'] if any(k['kind'] != 'dev' for k in d['dep_kinds']))
         packages = [p for p in packages if p['id'] in seen]
-    version = '0.0.5-dev' if gentle else '0.0.4-dev'
+    version = '0.0.7-dev' if gentle else '0.0.4-dev'
     pages = [f'Avisos de terceros · AI Stack Desktop {version}\nFuentes sin modificaciones disponibles en los enlaces de cada versión.']
     for p in packages:
         if p['name'] in ('ai-stack-desktop', 'w1-supervisor') and not p['source']:

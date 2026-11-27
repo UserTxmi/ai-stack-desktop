@@ -26,4 +26,11 @@ Button 'Sincronizar ahora' {[IO.File]::WriteAllText($cfg.signal,'sync')};Button 
 $tray=New-Object Windows.Forms.NotifyIcon; $tray.Icon=[Drawing.SystemIcons]::Application; $tray.Text='AI Stack Desktop · Cuentas y administración'; $tray.Visible=$true
 $menu=New-Object Windows.Forms.ContextMenuStrip; [void]$menu.Items.Add('Cuentas y administración',$null,{$form.Show();$form.Activate()});$tray.ContextMenuStrip=$menu;$tray.Add_DoubleClick({$form.Show();$form.Activate()})
 $form.Add_FormClosing({param($sender,$evt) $evt.Cancel=$true;$form.Hide()});$form.Add_VisibleChanged({if(!$form.Visible){$key.Clear()}})
+$timer=New-Object Windows.Forms.Timer; $timer.Interval=700
+$timer.Add_Tick({foreach ($name in 'cuentas','cliproxyapi','omniroute') {
+    $file=Join-Path (Split-Path $cfg.signal) "abrir-$name"
+    if ([IO.File]::Exists($file)) {[IO.File]::Delete($file); switch ($name) {
+        cuentas {$form.Show();$form.Activate()} cliproxyapi {Open-Admin cpa} omniroute {Open-Admin omni}
+    }}
+}});$timer.Start()
 if ($cfg.open){$form.Show()};[Windows.Forms.Application]::Run()
