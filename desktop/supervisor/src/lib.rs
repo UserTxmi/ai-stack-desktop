@@ -425,7 +425,7 @@ impl Supervisor {
         )?;
         let a = &mut self.services[2];
         healthy(a, 2)?;
-        self.event("OpenCode: salud autenticada; cargando catálogo del proyecto".into());
+        self.event("OpenCode: salud autenticada; comprobando catálogo de arranque".into());
         let a = &mut self.services[2];
         let providers = a.api.request(&a.job, "GET", "/provider", Value::Null)?;
         let variants = providers["all"]
@@ -436,7 +436,7 @@ impl Supervisor {
         if variants.len() != 2 || !variants.contains_key("low") || !variants.contains_key("high") {
             return Err("Variantes W1 incorrectas".into());
         }
-        self.event("Catálogo OpenCode confirmado: low / high".into());
+        self.event("Catálogo OpenCode confirmado: low / high (servidor)".into());
         Ok(())
     }
     fn launch(

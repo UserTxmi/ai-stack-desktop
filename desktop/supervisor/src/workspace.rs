@@ -142,7 +142,9 @@ impl Bridge {
             let mut query = url::form_urlencoded::Serializer::new(String::new());
             for (k, v) in url::form_urlencoded::parse(req.uri().query().unwrap_or("").as_bytes()) {
                 if k == "directory" {
-                    if !v.eq_ignore_ascii_case(&self.project) {
+                    // pathKey() del cliente oficial normaliza los separadores Windows.
+                    // Sólo comparamos; el upstream siempre recibe self.project.
+                    if !v.replace('/', "\\").eq_ignore_ascii_case(&self.project) {
                         return Ok(deny(403));
                     }
                 } else if matches!(

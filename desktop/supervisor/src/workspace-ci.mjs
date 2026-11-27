@@ -17,7 +17,13 @@ try {
   assert.ok(html.includes('<title>OpenCode</title>'));for(const [,path] of html.matchAll(/(?:src|href)="(\/assets\/[^" ]+)"/g)){const r=await request(path);assert.ok(r.ok);assert.ok((await r.arrayBuffer()).byteLength>1024)}
   stage='CI_CATALOGO';assert.equal((await api('/global/health')).healthy,true);
   const providerID='opencode-omniroute',modelID='labcpa/lab-reasoner',model={providerID,modelID};
-  const p=(await api('/provider')).all.find(p=>p.id===providerID);assert.deepEqual(Object.keys(p.models[modelID].variants).sort(),['high','low']);
+  for(const dir of [directory,directory.replaceAll('\\','/')]) {
+    const query='?'+new URLSearchParams({directory:dir});
+    const catalog=await api('/provider'+query);assert.ok(catalog.connected.includes(providerID));
+    const p=catalog.all.find(p=>p.id===providerID);assert.deepEqual(Object.keys(p.models[modelID].variants).sort(),['high','low']);
+    assert.equal((await api('/path'+query)).directory.toLowerCase(),directory.toLowerCase());
+  }
+  for(const dir of [directory+'/otro',directory+'/../otro'])assert.equal((await request('/provider?'+new URLSearchParams({directory:dir}))).status,403);
   const agents=await api('/agent');for(const name of ['build','plan'])assert.ok(agents.some(a=>a.name===name));
   if(session){stage='CI_HISTORIAL';const sess=await api('/session/'+session);assert.equal(sess.directory.toLowerCase(),directory.toLowerCase());assert.ok((await api('/session')).some(s=>s.id===session));assert.ok((await api(`/session/${session}/message`)).some(m=>m.parts.some(p=>p.type==='text'&&p.text.includes('LAB'))));}
   else {

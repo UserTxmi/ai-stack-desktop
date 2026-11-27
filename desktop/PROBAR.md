@@ -1,6 +1,6 @@
-# AI Stack Desktop 0.0.3-dev · prueba manual en Windows 11 x64
+# AI Stack Desktop 0.0.4-dev · prueba manual en Windows x64
 
-1. Descargue el artefacto Actions `AI-Stack-Desktop-0.0.3-dev-win-x64` y use una cuenta estándar. Debe estar instalado Microsoft Edge WebView2 Runtime. Reserve varios GiB y extraiga todo el ZIP a una carpeta nueva, privada y escribible en un disco local NTFS, por ejemplo `%LOCALAPPDATA%\AI Stack 03`. Use una ruta corta. No mezcle prototipos.
+1. Descargue `AI-Stack-Desktop-0.0.4-dev-win-x64` y use una cuenta estándar. El portable necesita Microsoft Edge WebView2 Runtime y [Microsoft Visual C++ Redistributable x64](https://aka.ms/vs/17/release/vc_redist.x64.exe). Si Windows indica que falta `VCRUNTIME140.dll`, instale el redistribuible oficial y vuelva a abrir la aplicación. Reserve varios GiB y extraiga todo el ZIP a una carpeta nueva, privada y escribible en un disco local NTFS, por ejemplo `%LOCALAPPDATA%\AI Stack 04`. Use una ruta corta. No mezcle prototipos.
 2. `commit.txt` identifica la compilación. Puede cotejar el SHA-256 de `bin\ai-stack-desktop.exe` con `SHA256SUMS.txt` usando su verificador habitual. Es una compilación de desarrollo sin firma de release.
 3. Abra `bin\ai-stack-desktop.exe` con doble clic. En **Configuración** compruebe la ubicación; en **Servicios**, con internet, pulse **Preparar o reintentar**. Observe etapas y bytes. Al acabar deben aparecer **Preparado · integridad W1 comprobada** y la confirmación de SQLite.
 4. Pulse **Iniciar stack**. Compruebe los tres servicios sanos y el catálogo `low / high`. Pulse **Probar turno** y confirme que respondió el proveedor sintético. No introduzca credenciales. Pulse **Detener** y compruebe el cierre OpenCode → OmniRoute → CLIProxyAPI → proveedor sintético.

@@ -28,7 +28,7 @@ dependencies = [
 
 [[package]]
 name = "ai-stack-desktop"
-version = "0.0.3-dev"
+version = "0.0.4-dev"
 dependencies = [
  "tauri",
  "tauri-build",
@@ -3827,7 +3827,7 @@ dependencies = [
 
 [[package]]
 name = "w1-supervisor"
-version = "0.0.3-dev"
+version = "0.0.4-dev"
 dependencies = [
  "base64 0.22.1",
  "dunce",

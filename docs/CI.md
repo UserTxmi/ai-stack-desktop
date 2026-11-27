@@ -21,4 +21,6 @@ gh run download ID --pattern 'w1-informe-*' --dir experiments/phase1/.lab/ci-res
 **Selección:** push relevante → completa; dispatch focal disponible para diagnóstico sin EXE publicado. La completa exige regresiones y backend nativo. El Node de Actions y el privado de W1 son distintos.
 ## Evidencia 2C
 
+Desde `0.0.4-dev`, el job también abre el EXE gráfico y comprueba el selector del proyecto en WebView2 antes de emitir el ZIP; `webview.txt` resume ese paso. El diálogo nativo y la validación interactiva siguen a cargo del ensayo en escritorio.
+
 La suite completa de `windows-w1.yml` añade `--ci-workspace` antes de las regresiones independientes. Un cliente Node del laboratorio usa el ticket y la cookie del workspace, la selección de carpeta y el mismo listener que WebView2; la comprobación atraviesa el stack instalado por el EXE. `workspace.txt` sólo resume el resultado, sin sesiones, rutas ni tickets. [Run, binario verificado y límites de evidencia](PHASE2C_REPORT.md#evidencia).

@@ -1,5 +1,7 @@
 # Producto y alcance
 
+**Dependencia del instalador clásico:** en Windows x64 limpio, detectar Microsoft Visual C++ Redistributable x64 e instalarlo automáticamente si falta o es insuficiente, antes de abrir la aplicación. La VPS de prueba de 2C no pudo cargar `VCRUNTIME140.dll` hasta instalarlo.
+
 **Distribución final confirmada:** un instalador EXE clásico de Windows (asistente al estilo Inno Setup o NSIS), distinto del ejecutable de la aplicación. Debe permitir elegir ubicación, preparar dependencias automáticamente con barra de progreso, crear accesos directos en escritorio y menú Inicio, instalar un desinstalador y abrir la aplicación instalada. Las versiones de desarrollo 2A–2C son portables.
 
 **P · Usuario inicial:** desarrollador con un equipo Windows 11 x64 mantenido, cuenta estándar y al menos un método de acceso permitido por el proveedor. **S:** puede completar el consentimiento en su navegador. Un proveedor que exija una capacidad o licencia no disponible figurará como no compatible. Instalar la aplicación no otorga acceso a modelos.

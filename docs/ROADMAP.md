@@ -21,6 +21,8 @@
 
 ### Registro de riesgos abiertos
 
+Prueba de aceptación del instalador clásico: partir de una máquina sin Visual C++ Redistributable x64, instalarlo automáticamente y comprobar la primera apertura sin error `VCRUNTIME140.dll`.
+
 | Riesgo / impacto | Responsable y decisión pendiente |
 |---|---|
 | Crítico: UI web hace fallback a internet; panel CPA se descarga aparte. Una página no fijada obtendría autoridad de su origen local. | Seguridad/desktop: exigir recursos locales verificados y ausencia de fallback en T1/T2; reevaluar Desktop oficial si no se puede garantizar. |

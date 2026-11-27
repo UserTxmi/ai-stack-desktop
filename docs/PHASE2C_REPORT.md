@@ -1,5 +1,13 @@
 # Fase 2C · Workspace OpenCode · 0.0.3-dev
 
+## Bloqueo interactivo y corrección 0.0.4-dev
+
+La prueba en la VPS Windows confirmó preparación, inicio y renderizado tras instalar Visual C++ Redistributable x64. El selector seguía vacío en una carpeta seleccionada, sin cuentas manuales. No se registró una traza de red de esa VPS.
+
+**Causa en el contrato de carpeta.** En el [cliente oficial 1.19.6](https://github.com/anomalyco/opencode/blob/v1.19.6/packages/app/src/utils/path-key.ts), `pathKey` convierte `C:\Proyecto ñ` en `C:/Proyecto ñ`. El [SDK](https://github.com/anomalyco/opencode/blob/v1.19.6/packages/sdk/js/src/v2/client.ts) envía ese valor en la query `directory` del GET. Tras autenticar la cookie, el [puente 0.0.3-dev](https://github.com/UserTxmi/ai-stack-desktop/blob/382afe0/desktop/supervisor/src/workspace.rs#L141-L148) sólo ignoraba mayúsculas; rechazaba la consulta con **403 antes de contactar a OpenCode**. Al fallar la consulta del proyecto, el [estado de la interfaz](https://github.com/anomalyco/opencode/blob/v1.19.6/packages/app/src/context/global-sync/child-store.ts#L191-L216) queda sin modelos. El supervisor y el cliente Node comprobaban `/provider` sin `directory`; ni consumían el estado del proyecto ni abrían el selector.
+
+**Cambio:** aceptar ambos separadores para comparar la carpeta; reenviar siempre la ruta canónica seleccionada. Mismo perfil gestionado, plugin, cookie HttpOnly, Basic sólo al servidor supervisado y un único catálogo. La regresión HTTP exige proveedor conectado, variantes y carpeta efectiva por ambas grafías y rechaza otras carpetas. La regresión WebView2 utiliza el EXE de entrega; automatiza la apertura con el resultado del selector nativo y selecciona el modelo, `low` y `high` en el DOM oficial. La aceptación interactiva final de 2C sigue pendiente.
+
 **Alcance:** prototipo portable Windows x64. El selector nativo abre una carpeta local en un WebView hijo; la barra superior conserva Proyectos, Servicios, Diagnóstico y Configuración. Sólo responde el proveedor sintético. [Validación interactiva paso a paso](../desktop/PROBAR.md#conversar-en-el-workspace-validación-interactiva-2c).
 
 ## Implementación y límites
