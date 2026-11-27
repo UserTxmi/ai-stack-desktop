@@ -20,7 +20,7 @@ foreach($pass in 1,2){
         $gui=Get-Process -Id (Get-Content "$dir/gentle/desktop/instance.json" -Raw | ConvertFrom-Json).pid
         if (!$gui.CloseMainWindow() -or !$p.WaitForExit(60000) -or $p.ExitCode){throw 'El supervisor no cerró correctamente'}
     } catch {
-        Get-Content "$Root/err.txt" | Select-String -SimpleMatch 'AI Stack Desktop 0.0.6-dev:'
+        Get-Content "$Root/err.txt" | Select-String -SimpleMatch 'AI Stack Desktop 0.0.6-dev:','Setup sintético:'
         Get-Content "$Root/out.txt" | Select-Object -Last 3
         throw
     } finally {if (!$p.HasExited){$p.Kill();$p.WaitForExit()};$p.Dispose()}

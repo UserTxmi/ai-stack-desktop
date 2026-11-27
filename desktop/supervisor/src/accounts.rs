@@ -339,13 +339,15 @@ impl Accounts {
             {
                 return Err("Inicio OAuth sintético inesperado".into());
             }
-            let cancelled=management.request(
+            let cancelled = management.request(
                 job,
                 "DELETE",
                 &format!("/v8/management/oauth/session?state={state}"),
                 Value::Null,
             )?;
-            if cancelled["cancelled"]!=true{return Err("La sesión OAuth de ensayo no se canceló".into());}
+            if cancelled["cancelled"] != true {
+                return Err("La sesión OAuth de ensayo no se canceló".into());
+            }
         }
         Ok(Self {
             v,

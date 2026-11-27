@@ -35,6 +35,83 @@ fn setup(home: &Path, runtime: &Path, env: &Env, project: &Path) -> Result<()> {
         .wait(Duration::from_secs(360))
         .map_err(|e| format!("Companion setup: {e}"))?;
     if !ok || !ready()? {
+        if env.contains_key("AI06_SYNTHETIC_SETUP") {
+            // En este punto el proceso de setup no recibió claves de servicios ni de proveedores.
+            // Emitir sólo categorías de diagnóstico, no valores de entorno, rutas ni salida cruda.
+            let terms = [
+                "failed",
+                "error",
+                "fatal",
+                "warning",
+                "unknown",
+                "unsupported",
+                "missing",
+                "not installed",
+                "cannot",
+                "could not",
+                "executable",
+                "invalid",
+                "permission",
+                "binary",
+                "package",
+                "network",
+                "engram",
+                "project",
+                "refusing",
+                "invalid argument",
+                "flag",
+                "npm",
+                "git",
+                "spawn",
+                "integrity",
+                "EPERM",
+                "ENOENT",
+                "EINVAL",
+                "EEXIST",
+                "EACCES",
+                "required",
+                "exit status",
+                "skip",
+                "conflict",
+                "outside",
+                "PATH",
+                "cmd.exe",
+                "powershell",
+                "--agent",
+                "--scope",
+                "preserved",
+                "setup",
+                "dependency",
+                "timeout",
+                "verify",
+                "version",
+                "update",
+                "not recognized",
+                "could not determine",
+                "not set",
+                "ProgramFiles",
+                "SystemRoot",
+            ];
+            for line in out
+                .lines()
+                .rev()
+                .take(12)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+            {
+                let lower = line.to_lowercase();
+                let tags = terms
+                    .iter()
+                    .filter(|t| lower.contains(&t.to_lowercase()))
+                    .copied()
+                    .collect::<Vec<_>>();
+                if !tags.is_empty() {
+                    eprintln!("Setup sintético: {}", tags.join(","));
+                }
+            }
+            eprintln!("Setup sintético: exit_ok={ok}; marker={}", marker.exists());
+        }
         let why = [
             "ENOENT",
             "EACCES",
@@ -146,6 +223,9 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         ),
         ("ENGRAM_URL", mapi.origin()),
         ("ENGRAM_BIN", s(&engram)),
+        ("GENTLE_AI_ENGRAM_BIN", s(&engram)),
+        ("GENTLE_AI_HOME", s(&path("home/.gentle-ai"))),
+        ("GENTLE_AI_PI_CONFIG_DIR", s(&path("config"))),
         ("ENGRAM_PROJECT", "gentle".into()),
         ("PI_OFFLINE", "1".into()),
         ("GOROOT", s(&go)),
@@ -165,6 +245,9 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         ),
     ] {
         env.insert(k.into(), v);
+    }
+    if ci {
+        env.insert("AI06_SYNTHETIC_SETUP".into(), "1".into());
     }
     setup(&home, &runtime, &env, &project)?;
     println!("Companion listo");
