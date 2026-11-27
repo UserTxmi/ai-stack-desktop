@@ -74,6 +74,7 @@ def run(root, node, report, stack):
     # MinGit publica un sh POSIX privado, no el bash de PortableGit.
     shell = (root/'git/usr/bin/sh.exe').resolve(strict=True)
     env.update(GENTLE_SHELL_HOME=str(home), GENTLE_PI_CONFIG_HOME=str(config), GENTLE_SHELL_NO_AUTO_SETUP='1',
+               GENTLE_SHELL_GPUI_DATA_DIR=str(root/'desktop-data'), GENTLE_SHELL_ARGS='--isolated',
                PI_OFFLINE='1', ENGRAM_DATA_DIR=str(root/'memory'), ENGRAM_PROJECT='gentle-lab',
                ENGRAM_BIN=str(engram), ENGRAM_URL=mem.origin, GENTLE_SHELL_INTERACTIVE_HOST='1',
                PATH=f'{root}/git/cmd;{shell.parent};'+env['PATH'])
@@ -206,6 +207,8 @@ def run(root, node, report, stack):
         finally:
             j.finish(); report.setdefault('arboles_vacios',[]).append(label)
     check(not failures,'ensayos fallidos: '+','.join(failures))
+    from g2 import verify
+    verify(root,project,node,env,providers,report)
 
 
 if __name__=='__main__':
