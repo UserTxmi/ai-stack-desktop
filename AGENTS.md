@@ -1,6 +1,6 @@
 # Instrucciones del proyecto
 
-**Estado actual:** G2 y prueba manual de `0.0.5-dev` aceptadas en Windows 11; conservar `9625068` como recuperación. [`0.0.6-dev` entregada con CI sintética](README.md); el uso de cuentas reales corresponde al usuario en Windows, nunca al laboratorio Linux ni a Actions. Los workflows Windows requieren despacho manual; no repetir G1/G2/W1 sin necesidad.
+**Estado actual:** `0.0.6-dev` aceptada en Windows 11; conservar `7214c9f` y su portable como recuperación. [`0.0.7-dev` entregada con CI sintética](docs/INSTALADOR_007.md); el uso de cuentas reales corresponde al usuario en Windows, nunca al laboratorio Linux ni a Actions. Los workflows Windows requieren despacho manual; no repetir G1/G2/W1 sin necesidad.
 
 **Revisión 2C:** el usuario aprobó la prueba interactiva básica de 2B y autorizó `0.0.3-dev`: workspace local oficial con proveedor sintético, servidor supervisado y ZIP portable en Actions. [Evidencia 2C](docs/PHASE2C_REPORT.md). El instalador definitivo y 1B-Desktop siguen fuera de este alcance.
 
