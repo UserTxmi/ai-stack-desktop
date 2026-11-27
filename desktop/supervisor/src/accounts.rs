@@ -54,25 +54,65 @@ fn powershell(env: &Env) -> PathBuf {
 }
 
 /// ACL heredable aplicada antes de crear archivos OAuth, SQLite o configuración.
-fn private_dir(path: &Path, env: &Env) -> Result<()> {
+fn private_dir(path: &Path) -> Result<()> {
+    use std::os::windows::{
+        ffi::OsStrExt,
+        io::{AsRawHandle, FromRawHandle, OwnedHandle},
+    };
+    use windows_sys::Win32::{
+        Security::{Authorization::*, *},
+        System::Threading::{GetCurrentProcess, OpenProcessToken},
+    };
     install::folder(path)?;
-    let script = "$ErrorActionPreference='Stop';$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User;$acl=New-Object Security.AccessControl.DirectorySecurity;$acl.SetOwner($sid);$acl.SetAccessRuleProtection($true,$false);$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow'));Set-Acl -LiteralPath ([Environment]::CurrentDirectory) -AclObject $acl";
-    let mut job = Job::launch(
-        Spec {
-            exe: powershell(env),
-            args: vec![
-                "-NoProfile".into(),
-                "-NonInteractive".into(),
-                "-Command".into(),
-                script.into(),
-            ],
-            input: String::new(),
-        },
-        path,
-        env,
-    )?;
-    if !job.wait(Duration::from_secs(25))?.0 {
-        return Err("No se pudo aplicar la ACL privada de Windows".into());
+    unsafe {
+        let mut handle = std::ptr::null_mut();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut handle) == 0 {
+            return Err("No se pudo identificar al usuario de Windows".into());
+        }
+        let token = OwnedHandle::from_raw_handle(handle);
+        let mut size = 0;
+        GetTokenInformation(
+            token.as_raw_handle(),
+            TokenUser,
+            std::ptr::null_mut(),
+            0,
+            &mut size,
+        );
+        let mut info = vec![0usize; (size as usize).div_ceil(std::mem::size_of::<usize>())];
+        if GetTokenInformation(
+            token.as_raw_handle(),
+            TokenUser,
+            info.as_mut_ptr().cast(),
+            size,
+            &mut size,
+        ) == 0
+        {
+            return Err("No se pudo leer el SID del usuario".into());
+        }
+        let sid = (*(info.as_ptr().cast::<TOKEN_USER>())).User.Sid;
+        let mut ace = std::mem::zeroed::<EXPLICIT_ACCESS_W>();
+        ace.grfAccessPermissions = 0x1f01ff;
+        ace.grfAccessMode = SET_ACCESS;
+        ace.grfInheritance = OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE;
+        BuildTrusteeWithSidW(&mut ace.Trustee, sid);
+        let mut acl = std::ptr::null_mut();
+        if SetEntriesInAclW(1, &ace, std::ptr::null(), &mut acl) != 0 {
+            return Err("No se pudo construir la ACL privada".into());
+        }
+        let name: Vec<u16> = path.as_os_str().encode_wide().chain([0]).collect();
+        let code = SetNamedSecurityInfoW(
+            name.as_ptr(),
+            SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            acl,
+            std::ptr::null_mut(),
+        );
+        LocalFree(acl.cast());
+        if code != 0 {
+            return Err(format!("No se pudo aplicar la ACL privada ({code})"));
+        }
     }
     Ok(())
 }
@@ -112,7 +152,7 @@ impl Accounts {
         let name = if ci { "cuentas-ci" } else { "cuentas" };
         let folder = install.root().join("datos").join(name);
         let env = environment(&install.temporary().join("acl"), &node)?;
-        private_dir(&folder, &env)?;
+        private_dir(&folder)?;
         for dir in ["auth", "omni", "home-cpa", "home-omni"] {
             install::folder(&folder.join(dir))?;
         }
@@ -299,12 +339,13 @@ impl Accounts {
             {
                 return Err("Inicio OAuth sintético inesperado".into());
             }
-            management.request(
+            let cancelled=management.request(
                 job,
                 "DELETE",
                 &format!("/v8/management/oauth/session?state={state}"),
                 Value::Null,
             )?;
+            if cancelled["cancelled"]!=true{return Err("La sesión OAuth de ensayo no se canceló".into());}
         }
         Ok(Self {
             v,

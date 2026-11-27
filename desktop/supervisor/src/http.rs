@@ -94,7 +94,23 @@ impl Api {
                     .await
                     .safe()?;
                 if !resp.status().is_success() {
-                    return Err(format!("HTTP {}", resp.status().as_u16()));
+                    let status = resp.status().as_u16();
+                    // Sólo rutas estáticas en el diagnóstico; nunca query/estado OAuth ni IDs privados.
+                    if [
+                        "/api/providers",
+                        "/api/provider-nodes",
+                        "/api/keys",
+                        "/api/resilience",
+                        "/api/rate-limits",
+                        "/api/auth/login",
+                        "/api/model-capability-overrides",
+                        "/v8/management/oauth/auth-url",
+                    ]
+                    .contains(&path)
+                    {
+                        return Err(format!("{method} {path}: HTTP {status}"));
+                    }
+                    return Err(format!("HTTP {status}"));
                 }
                 for h in resp.headers().get_all("set-cookie") {
                     if let Some((k, v)) = h

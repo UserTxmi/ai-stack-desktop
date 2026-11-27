@@ -31,7 +31,9 @@ fn setup(home: &Path, runtime: &Path, env: &Env, project: &Path) -> Result<()> {
         project,
         env,
     )?;
-    let (ok, out) = job.wait(Duration::from_secs(360))?;
+    let (ok, out) = job
+        .wait(Duration::from_secs(360))
+        .map_err(|e| format!("Companion setup: {e}"))?;
     if !ok || !ready()? {
         let why = [
             "ENOENT",
@@ -76,7 +78,8 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
     )
     .safe()?;
     let mut sup = Supervisor::new(install.clone());
-    let mut accounts = Accounts::start(&mut sup, ci)?;
+    let mut accounts = Accounts::start(&mut sup, ci).map_err(|e| format!("Cuentas: {e}"))?;
+    println!("Cuentas privadas listas");
     let root = accounts.folder.join("gentle");
     install::folder(&root)?;
     let path = |name: &str| root.join(name);
@@ -164,6 +167,7 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         env.insert(k.into(), v);
     }
     setup(&home, &runtime, &env, &project)?;
+    println!("Companion listo");
     let models = accounts.sync(&mut sup, &home)?;
     let settings = home.join("settings.json");
     let mut cfg = read_json(&settings)?;
