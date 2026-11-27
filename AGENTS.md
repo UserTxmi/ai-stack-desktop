@@ -1,6 +1,6 @@
 # Instrucciones del proyecto
 
-**2C cerrada:** [validación interactiva en Windows de `0.0.4-dev`](docs/PHASE2C_REPORT.md). Conservar su ruta OpenCode como recuperación. La siguiente autorización es una PoC aislada de Gentle Shell/Pi con OmniRoute, proveedor sintético y Actions Windows x64; comparar ConPTY y GPUI antes de migrar.
+**2C cerrada:** [validación interactiva en Windows de `0.0.4-dev`](docs/PHASE2C_REPORT.md). Conservar su ruta OpenCode como recuperación. La [PoC de Gentle Shell/Pi con OmniRoute, ConPTY y GPUI](docs/GENTLE_POC.md) pasó en Actions Windows x64. La migración de la aplicación queda condicionada a G2.
 
 **Revisión 2C:** el usuario aprobó la prueba interactiva básica de 2B y autorizó `0.0.3-dev`: workspace local oficial con proveedor sintético, servidor supervisado y ZIP portable en Actions. [Evidencia 2C](docs/PHASE2C_REPORT.md). El instalador definitivo y 1B-Desktop siguen fuera de este alcance.
 

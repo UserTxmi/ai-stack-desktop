@@ -4,7 +4,7 @@
 
 **1B-CI aprobada para W1 corregido; 1B-Desktop pendiente.** [Preparación automática 2B](docs/PHASE2B_REPORT.md) · [Prueba interactiva básica 2A en Windows 11](docs/PHASE2A_REPORT.md#prueba-interactiva-básica-en-windows-11) · [Resultados de integración W1](docs/PHASE1B_CI_REPORT.md). El prototipo conecta una ventana Tauri a un supervisor nativo y usa únicamente el proveedor de demo. No es un instalador de producción.
 
-**Recomendación:** reutilizar el servidor y el espacio de trabajo web de OpenCode, el gateway y el panel de OmniRoute, y los flujos de conexión de CLIProxyAPI. Un supervisor nativo sería el único propietario de sus procesos. La elección de Tauri frente al escritorio Electron oficial queda condicionada a una comparación en Windows con las mismas sesiones y herramientas. No hay una estimación de RAM de Windows validada.
+**2C cerrada por validación interactiva en Windows.** `0.0.4-dev` con OpenCode es la referencia de recuperación. Para desarrollo nuevo, el motor elegido es **Gentle Shell sobre Pi**; OmniRoute seguirá siendo el único proveedor del agente. [PoC Windows x64, comparación ConPTY/GPUI y recomendación](docs/GENTLE_POC.md). La PoC no reemplaza el EXE que se descarga arriba.
 
 | Para decidir… | Leer |
 |---|---|

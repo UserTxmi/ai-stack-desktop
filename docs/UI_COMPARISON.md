@@ -1,5 +1,7 @@
 # E11: mismo workspace, dos escritorios, una sola sesión de ensayo
 
+Comparación histórica de la línea OpenCode. La comparación para la decisión actual D7 es [Gentle Shell TUI/ConPTY frente a Gentle Shell GPUI](GENTLE_POC.md).
+
 **Pregunta:** ¿conserva el pequeño host Tauri/WebView2 la experiencia de OpenCode en Windows nativo tan bien como Desktop Electron/Solid? El binario A de `experiments/phase1/ui` solo abre `127.0.0.1:<puerto>`; no tiene IPC de aplicación, herramientas, actualizador ni instalador. B es el EXE oficial fijado en `versions.json`, no una imitación del chat. La prueba requiere pantalla y operador. **Estado: pendiente.**
 
 1. En la VM de preparación, además de lo indicado en [1B](PHASE1A_REPORT.md), disponer de toolchain estable Rust MSVC x64, SDK y herramientas de compilación MSVC, WebView2 Evergreen. Son prerrequisitos del **laboratorio**, no del usuario. Desde la raíz, en PowerShell:

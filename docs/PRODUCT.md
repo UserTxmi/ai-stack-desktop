@@ -12,7 +12,7 @@
 | Conectar | Elegir proveedor y cuenta; consentimiento OAuth oficial en navegador o entrada de clave autorizada en el flujo correspondiente. Ver estado, cancelar, volver a autorizar, desactivar o desconectar. Indicar si hace falta revocar también en el proveedor. |
 | Elegir | Ver catálogo efectivo de esa conexión, origen, capacidades conocidas, contexto y esfuerzo compatibles. Distinguir modelo, alias y combo; mostrar última sincronización, indisponibilidad y cuota sin cambiar de cuenta a escondidas. |
 | Trabajar | Elegir carpeta de proyecto; iniciar o reabrir sesión persistente; ver agente, herramientas, progreso y solicitudes de permiso; aceptar, denegar o cancelar. Mostrar qué petición queda interrumpida si falla el gateway. |
-| Extender | Mantener los plugins, MCP y skills compatibles de OpenCode. Mostrar procedencia, requisitos de runtime y alcance por proyecto. La instalación o activación de código de terceros es decisión del usuario. |
+| Extender | En la línea Gentle Shell usar extensiones, MCP y skills compatibles con Pi; mostrar procedencia, requisitos y alcance por proyecto. La compatibilidad con plugins de OpenCode sólo corresponde al EXE de recuperación. Activar código de terceros es decisión del usuario. |
 | Administrar | Abrir paneles upstream aislados, ver salud por componente y métricas, exportar diagnóstico revisable. Cerrar una vista no debe perder la sesión; «Salir» explica si hay trabajo activo. |
 | Mantener | Actualización controlada del conjunto; recuperación tras fallo y elección explícita sobre datos al desinstalar. El directorio de proyecto nunca es propiedad del desinstalador. |
 

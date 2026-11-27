@@ -1,6 +1,6 @@
 # Arquitectura propuesta para Windows
 
-**P · Decisión a revisar:** construir un supervisor por usuario y componer servicios mediante sus interfaces oficiales. Reutilizar el espacio de trabajo de OpenCode, no el instalador de cada escritorio. Las pruebas [T1–T9](TESTING.md) deciden si esta composición llega a producción.
+**Objetivo D7:** el supervisor Rust conserva la preparación y los procesos de servicios. La nueva rama de agentes es `TUI/ConPTY o GPUI → Gentle Shell/Pi → OmniRoute → CLIProxyAPI`; Engram privado sirve a las sesiones Pi. La [PoC](GENTLE_POC.md) ejercita esos contratos antes de incorporarlos al supervisor. El diagrama siguiente documenta la referencia funcional `0.0.4-dev` con OpenCode. Las pruebas [T1–T9](TESTING.md) siguen condicionando la distribución.
 
 ```text
 Ventana propia (estado, conexiones, modelo, recursos, mantenimiento)
