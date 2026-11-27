@@ -18,7 +18,10 @@ foreach($pass in 1,2){
             while (!(Get-ChildItem "$dir/gentle/agent/sessions" -Recurse -Filter *.jsonl -ErrorAction SilentlyContinue|Select-String -SimpleMatch 'LABLABLAB' -Quiet)){if ($p.HasExited -or [datetime]::UtcNow -gt $limit){throw 'El proveedor sintético no respondió'};Start-Sleep 1}
         }elseif($saved[0] -ne $mark.at -or $saved[1] -ne (Get-FileHash "$dir/claves.dpapi").Hash -or $saved[2] -ne $provider.baseUrl){throw 'Se repitió setup o se reemplazó la cuenta'}
         $gui=Get-Process -Id (Get-Content "$dir/gentle/desktop/instance.json" -Raw | ConvertFrom-Json).pid
-        if (!$gui.CloseMainWindow() -or !$p.WaitForExit(60000) -or $p.ExitCode){throw 'El supervisor no cerró correctamente'}
+        $limit=[datetime]::UtcNow.AddSeconds(45)
+        do {$gui.Refresh(); if($gui.MainWindowHandle -ne 0){break}; Start-Sleep -Milliseconds 300} while([datetime]::UtcNow -lt $limit -and !$gui.HasExited)
+        if (!$gui.CloseMainWindow()){throw "GPUI sin ventana de cierre en apertura $pass"}
+        if (!$p.WaitForExit(60000)){throw "Plazo de cierre en apertura $pass (GPUI terminada: $($gui.HasExited))"};if ($p.ExitCode){throw "Error al cerrar en apertura $pass ($($p.ExitCode))"}
     } catch {
         Get-Content "$Root/err.txt" | Select-String -SimpleMatch 'AI Stack Desktop 0.0.6-dev:','Setup sintético:'
         Get-Content "$Root/out.txt" | Select-Object -Last 3

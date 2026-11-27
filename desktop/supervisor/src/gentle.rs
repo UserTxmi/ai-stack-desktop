@@ -303,14 +303,14 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
     )?;
     let record = path("desktop/instance.json");
     let deadline = Instant::now() + Duration::from_secs(90);
-    loop {
+    let gui_pid = loop {
         if !ui.alive() {
             return Err("GPUI terminó durante el arranque".into());
         }
         if let Ok(rec) = read_json(&record) {
             if let (Some(pid), Some(p)) = (rec["pid"].as_u64(), rec["port"].as_u64()) {
                 if ui.pids()?.contains(&(pid as u32)) && ui.owns(p as u16, None)? {
-                    break;
+                    break pid as u32;
                 }
             }
         }
@@ -318,13 +318,13 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
             return Err("GPUI sin listener privado".into());
         }
         sleep(Duration::from_millis(150));
-    }
+    };
     if let Some(j) = splash.take() {
         j.stop()?;
     }
     println!("GPUI lista");
     let mut due = Instant::now() + Duration::from_secs(12);
-    while ui.alive() {
+    while ui.alive() && ui.pids()?.contains(&gui_pid) {
         if !mem.alive()
             || sup
                 .services
@@ -353,6 +353,7 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         }
         sleep(Duration::from_millis(350));
     }
+    println!("Cerrando GPUI y sus descendientes");
     ui.stop()?;
     accounts.panel.take().unwrap().stop()?;
     mem.stop()?;
