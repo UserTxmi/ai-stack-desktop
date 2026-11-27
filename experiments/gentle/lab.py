@@ -1,5 +1,6 @@
 """PoC desechable Windows x64. Publica sólo contadores, marcas y resultados."""
 import contextlib
+import argparse
 import hashlib
 import json
 import os
@@ -61,7 +62,7 @@ def endpoint():
         return Client(s.getsockname()[1])
 
 
-def run(root, node, report, stack):
+def run(root, node, report, stack, g2_only=False):
     project = root/'Proyecto ñ'
     project.mkdir()
     def job(label):
@@ -104,7 +105,7 @@ def run(root, node, report, stack):
     password = secrets.token_hex(24)
     omni = RUNTIME/'package/dist'
     oe = env_for(root/'omni-home', node)
-    oe.update(PORT=str(gateway.port), HOSTNAME='127.0.0.1', OMNIROUTE_SERVER_HOST='127.0.0.1', OMNIROUTE_MAX_TOOLS_LIMIT='512',
+    oe.update(PORT=str(gateway.port), HOSTNAME='127.0.0.1', OMNIROUTE_SERVER_HOST='127.0.0.1',
               DATA_DIR=str(root/'omni-data'), NODE_ENV='production', INITIAL_PASSWORD=password,
               REQUIRE_API_KEY='true', JWT_SECRET=secrets.token_hex(32), STORAGE_ENCRYPTION_KEY=secrets.token_hex(32),
               NEXT_PUBLIC_BASE_URL=gateway.origin, NEXT_TELEMETRY_DISABLED='1', ENABLE_REQUEST_LOGS='false', APP_LOG_TO_FILE='false')
@@ -130,7 +131,7 @@ def run(root, node, report, stack):
         conn = gateway.json('/api/providers', {'provider':nid,'name':prefix,'apiKey':key})['connection']['id']
         connections.append(conn)
         gateway.json(f'/api/providers/{conn}/sync-models?mode=import', {})
-        for k,v in [('reasoning_efforts',','.join(FIX['efforts'])),('context_length',32768),('max_output_tokens',2048)]:
+        for k,v in [('reasoning_efforts',','.join(FIX['efforts'])),('context_length',262144 if g2_only else 32768),('max_output_tokens',4096 if g2_only else 2048)]:
             gateway.json('/api/model-capability-overrides', {'target':prefix+'/'+MODEL,'key':k,'value':v}, method='PATCH')
     env['GS_INFERENCE'] = gateway.json('/api/keys',{'name':'gentle','allowedConnections':connections})['key']
     inference = Client(gateway.port, 'Bearer '+env['GS_INFERENCE'])
@@ -150,6 +151,10 @@ def run(root, node, report, stack):
          'enabledModels':['omniroute/*'], 'shellPath':str(shell), 'packages':[str(root/'node_modules/gentle-engram')]})
     dump(config/'models.json', {'gentle-ai-explore':{'model':'omniroute/child/'+MODEL,'thinking':'high'}})
     report['catalogo_gateway'] = sorted(targets)
+    if g2_only:
+        from g2 import verify
+        verify(root,project,node,env,providers,report)
+        return
     sessions = {}
     failures = []
     for phase in ('low','high','resume','delegate','cancel'):
@@ -219,13 +224,14 @@ def run(root, node, report, stack):
 
 
 if __name__=='__main__':
+    parser=argparse.ArgumentParser();parser.add_argument('--g2-only',action='store_true');args=parser.parse_args()
     windows()
     root = Path(os.environ['RUNNER_TEMP'])/'gs'; root.mkdir(exist_ok=False)
     node = next((RUNTIME/'node').rglob('node.exe'))
     report = {}
     try:
         prepare(root,node)
-        with contextlib.ExitStack() as stack: run(root,node,report,stack)
+        with contextlib.ExitStack() as stack: run(root,node,report,stack,args.g2_only)
     finally:
         dump(LAB/'gentle-public.json',report)
         print(json.dumps(report, ensure_ascii=True), flush=True)

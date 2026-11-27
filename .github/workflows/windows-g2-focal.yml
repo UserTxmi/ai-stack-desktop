@@ -1,0 +1,31 @@
+name: Windows x64 · G2 focal GPUI
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  g2:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Preparar sólo los runtimes requeridos por G2
+        run: |
+          py -3.12 -B experiments/phase1/prepare.py --ci-stage binaries
+          if ($LASTEXITCODE) {exit $LASTEXITCODE}
+          py -3.12 -B experiments/phase1/prepare.py --ci-stage gateway
+      - name: Coexistencia, deny, allow y active-close
+        run: py -3.12 -B experiments/gentle/lab.py --g2-only
+      - name: Informe G2 reducido
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: g2-focal-${{ github.run_id }}-${{ github.run_attempt }}
+          path: experiments/phase1/.lab/gentle-public.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14

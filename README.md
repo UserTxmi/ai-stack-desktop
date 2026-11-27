@@ -1,5 +1,7 @@
 # AI Stack Desktop · prototipo Windows x64 `0.0.4-dev`
 
+**Candidato 0.0.5-dev:** [estado de la integración GPUI y pruebas de Windows](docs/GENTLE_G2.md). La entrega del candidato está bloqueada en la delegación desde la ventana. El ZIP de recuperación sigue disponible abajo.
+
 **[Descargar Windows x64 0.0.4-dev sin cuenta](https://nightly.link/UserTxmi/ai-stack-desktop/actions/runs/45916757368/AI-Stack-Desktop-0.0.4-dev-win-x64.zip)** · [Workspace 2C y resultados](docs/PHASE2C_REPORT.md) · [Guía para Windows](desktop/PROBAR.md). Extraiga el ZIP a una carpeta privada nueva, abra `bin\ai-stack-desktop.exe`, prepare e inicie el stack en **Servicios** y abra su carpeta desde **Proyectos**. La respuesta del agente es sintética.
 
 **1B-CI aprobada para W1 corregido; 1B-Desktop pendiente.** [Preparación automática 2B](docs/PHASE2B_REPORT.md) · [Prueba interactiva básica 2A en Windows 11](docs/PHASE2A_REPORT.md#prueba-interactiva-básica-en-windows-11) · [Resultados de integración W1](docs/PHASE1B_CI_REPORT.md). El prototipo conecta una ventana Tauri a un supervisor nativo y usa únicamente el proveedor de demo. No es un instalador de producción.

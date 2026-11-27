@@ -1,9 +1,6 @@
 name: Windows x64 · PoC Gentle Shell
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['experiments/gentle/**', '.github/workflows/windows-gentle.yml', 'desktop/supervisor/**', 'desktop/gentle-assets.json', 'desktop/ci-gentle.ps1']
 permissions:
   contents: read
 jobs:

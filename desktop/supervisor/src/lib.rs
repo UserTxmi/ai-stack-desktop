@@ -335,7 +335,6 @@ impl Supervisor {
         let origin = gateway.origin();
         let omni = self.runtime.join("package/dist");
         let mut env = demo_env(&self.install, &profile, "omni", &node)?;
-        if gentle {env.insert("OMNIROUTE_MAX_TOOLS_LIMIT".into(),"512".into());}
         for (k, v) in [
             ("PORT", ports[2].to_string()),
             ("HOSTNAME", "127.0.0.1".into()),
