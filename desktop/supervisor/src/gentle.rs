@@ -179,10 +179,13 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
     let engram = runtime.join("engram/engram.exe");
     let go = runtime.join("go/go");
     let modules = runtime.join("gentle/node_modules");
+    let launcher = std::env::current_exe().safe()?;
     for (name, source) in [
         ("node.exe", &node),
         ("go.exe", &go.join("bin/go.exe")),
         ("engram.exe", &engram),
+        ("pi.exe", &launcher),
+        ("setup-companion.exe", &launcher),
     ] {
         let link = bin.join(name);
         if install::item(&link)?.is_none() {
@@ -213,6 +216,12 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         ("GENTLE_SHELL_HOME", s(&home)),
         ("PI_CODING_AGENT_DIR", s(&home)),
         ("GENTLE_SHELL_CONFIG", s(&path("launcher.json"))),
+        ("AI06_RUNTIME", s(&runtime)),
+        (
+            "GENTLE_SHELL_GENTLE_AI_BIN",
+            s(&bin.join("setup-companion.exe")),
+        ),
+        ("GENTLE_AI_NO_SELF_UPDATE", "1".into()),
         ("GENTLE_SHELL_ARGS", "--isolated".into()),
         ("GENTLE_SHELL_GPUI_DATA_DIR", s(&path("desktop"))),
         ("GENTLE_PI_CONFIG_HOME", s(&path("config"))),
