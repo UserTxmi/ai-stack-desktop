@@ -13,6 +13,7 @@ class GentleProvider(Provider):
         self.consent_path = None
         self.consent_answer = None
         self.consent_offered = False
+        self.calls = []
 
 
 class GentleHandler(Handler):
@@ -46,7 +47,9 @@ class GentleHandler(Handler):
             self.rfile = original
 
     def offer(self,data,name,args):
-        if name not in {t['function']['name'] for t in data.get('tools', [])}:
+        available=name in {t['function']['name'] for t in data.get('tools', [])}
+        self.server.calls.append((name,available))
+        if not available:
             return self.reply(400, {'error': {'code': 'no_fixture_tool'}})
         call = {'index':0,'id':'call_gs','type':'function','function':{'name':name,'arguments':json.dumps(args)}}
         self.send_response(200); self.send_header('Content-Type','text/event-stream'); self.end_headers()

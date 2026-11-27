@@ -3,6 +3,7 @@ import ctypes as C
 from ctypes import wintypes as W
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import time
@@ -59,6 +60,10 @@ def verify(root, project, node, env, sources, report):
             ours=Job(); r[phase]={}; rr=r[phase]
             offsets={k:len(s.markers) for k,s in sources.items()}
             test_env=env.copy(); desktop=root/('ui-'+phase); desktop.mkdir()
+            # launch.rs: GPUI antepone el PATH del registro al entorno heredado,
+            # pero respeta su toolchain privada antes de ambos.
+            bindir=desktop/'toolchain/bin';bindir.mkdir(parents=True);os.link(node,bindir/'node.exe')
+            calls={k:len(s.calls) for k,s in sources.items()}
             # La preparación ya se completó; omitir la bienvenida de primera ejecución.
             (desktop/'settings.json').write_text('{"onboarding":{"done":true,"version":"0.1.28"}}')
             test_env['GENTLE_SHELL_GPUI_DATA_DIR']=str(desktop)
@@ -96,6 +101,15 @@ def verify(root, project, node, env, sources, report):
                 errors.append(phase); rr['fallo']=str(e)
             finally:
                 rr['marcas']={k:s.markers[offsets[k]:][:8] for k,s in sources.items()}
+                rr['herramientas']={k:s.calls[calls[k]:][:8] for k,s in sources.items()}
+                # Sólo clases de fallo conocidas. Nunca exportar texto de sesión o rutas.
+                flags=set()
+                for f in (root/'agent/sessions').rglob('*.jsonl'):
+                    text=f.read_text(encoding='utf-8',errors='replace')
+                    if str(work).replace('\\','\\\\').lower() not in text.lower():continue
+                    for tag in ['Unknown agent','not found','toolCall','toolResult','errorMessage','ENOENT','not available','error during','subagent_run','Unknown tool','spawn','is not recognized','no_subagent_tool','unsupported','timed out','failed to load','Cannot find','permission','cancelled']:
+                        if tag.lower() in text.lower():flags.add(tag)
+                rr['diagnostico']=sorted(flags)
                 ours.finish(); rr['job_vacio']=True
             if phase=='active-close' and 'fallo' not in rr:
                 wait(lambda:any(k=='cancelled' and e=='high' for k,e,_ in child.since(offset)),18,'receptor hijo no cancelado')

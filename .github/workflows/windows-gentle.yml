@@ -22,6 +22,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           py -3.12 -B experiments/phase1/prepare.py --ci-stage gateway
       - name: Gentle Shell real, gateway y receptores sintéticos
+        id: gates
         run: py -3.12 -B experiments/gentle/lab.py
       - name: Conservar sólo el resumen público
         if: ${{ !cancelled() }}
@@ -33,9 +34,12 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Compilar el supervisor del portable MSVC x64
+        if: ${{ !cancelled() && (steps.gates.outcome == 'success' || steps.gates.outcome == 'failure') }}
+        id: build
         working-directory: desktop
         run: cargo build --release --locked -p w1-supervisor --bin ai-stack-gentle
       - name: Preparación real y regresiones sobre el ejecutable de entrega
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           $root=Join-Path $env:RUNNER_TEMP 'AI05 ñ'
           New-Item -ItemType Directory "$root/bin", 'entrega-gentle/bin' | Out-Null
