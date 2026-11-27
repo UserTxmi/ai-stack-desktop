@@ -1,6 +1,6 @@
 # Instrucciones del proyecto
 
-**2C cerrada:** [validación interactiva en Windows de `0.0.4-dev`](docs/PHASE2C_REPORT.md). Conservar su ruta OpenCode como recuperación. G2 se ejecuta únicamente por [workflow focal](.github/workflows/windows-g2-focal.yml), con un máximo de dos nuevas ejecuciones desde el 27-11-2026. No ejecutar de nuevo la suite Gentle completa; estado en [GENTLE_G2](docs/GENTLE_G2.md).
+**2C cerrada:** [validación interactiva en Windows de `0.0.4-dev`](docs/PHASE2C_REPORT.md). Conservar su ruta OpenCode como recuperación. G2 focal aprobada en la segunda de dos ejecuciones autorizadas; no ejecutar más CI en este ciclo ni la suite Gentle completa. Estado en [GENTLE_G2](docs/GENTLE_G2.md).
 
 **Revisión 2C:** el usuario aprobó la prueba interactiva básica de 2B y autorizó `0.0.3-dev`: workspace local oficial con proveedor sintético, servidor supervisado y ZIP portable en Actions. [Evidencia 2C](docs/PHASE2C_REPORT.md). El instalador definitivo y 1B-Desktop siguen fuera de este alcance.
 

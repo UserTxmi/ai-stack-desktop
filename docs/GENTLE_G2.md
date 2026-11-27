@@ -1,6 +1,17 @@
-# G2 · candidato GPUI 0.0.5-dev · entrega bloqueada
+# G2 · candidato GPUI 0.0.5-dev
 
-**Decisión:** GPUI sigue siendo la interfaz principal elegida. El ejecutable de desarrollo existe, pero **no hay ZIP aprobado de 0.0.5-dev**. La condición del usuario es probar permisos del hijo y cierre mientras delega en la interfaz que recibirá; una conversación de texto o una prueba RPC fuera de GPUI no satisfacen esa condición. La descarga funcional sigue siendo [0.0.4-dev](PHASE2C_REPORT.md).
+**Resultado G2:** GPUI sigue siendo la interfaz principal elegida. La [ejecución focal 2/2](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45932380571) aprobó coexistencia, denegación, autorización y cierre durante una delegación activa. Su [artefacto JSON](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45932380571/artifacts/15169186550), digest `35f9b61f58824e263dead1cba07d519c9fb87392568f5838efd08b9ff702e93c`, es la evidencia pública. **No se emitió ZIP 0.0.5-dev:** el límite de dos ejecuciones focales se agotó y ese workflow no empaqueta. La descarga funcional sigue siendo [0.0.4-dev](PHASE2C_REPORT.md).
+
+## Resultado focal
+
+| Prueba | Evidencia observada |
+|---|---|
+| `deny` | Pi envió 64 herramientas, nueve de subagentes, incluyendo `subagent_run`; el padre usó `low`, el hijo `high`, ofreció `read` y la ventana contestó denegar. El receptor clasificó el resultado como `deny`. Job vacío. |
+| `allow` | Mismo catálogo y rutas; la ventana permitió el diálogo y el receptor clasificó el resultado como `allow`, que exige haber recibido `G2-CONTENIDO` desde el resultado real de `read`. Job vacío. |
+| `active-close` | El hijo ya había emitido su primer fragmento con `high`; se observaron 11 procesos en el árbol. Al cerrar el Job, quedó vacío y el receptor del hijo registró desconexión antes de completar. |
+| Coexistencia | La instancia GPUI externa mantuvo PID/listener y ventana. Las huellas de configuración, sesión y credencial sintética externa permanecieron iguales después de cada caso. |
+
+El runner hospedado no prueba foco, aspecto del diálogo ni experiencia humana de Windows 11. Sí ejercita el manejador real de teclas de GPUI (`y`/`n`) contra su ventana, el protocolo RPC, el puente de preguntas del hijo, el receptor y los Jobs Win32. La guía [PROBAR-GPUI](../desktop/PROBAR-GPUI.md) deja la repetición manual preparada.
 
 ## Lo que se ejecutó
 
@@ -10,8 +21,8 @@
 | EXE del candidato | [Run del candidato](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45928048782): compilación MSVC, preparación desde raíz vacía, GPUI con instancia propia, respuesta `LABLABLAB` en el historial Pi y cierre normal. La segunda apertura llegó al plazo de **delegación activa en receptor**. Los pasos de empaquetado fueron omitidos por fallo. |
 | Propiedad y coexistencia | Dos procesos GPUI oficiales con registros y listeners distintos, PID verificado en cada Job. Se comprobó que la ventana externa siguió viva y que los bytes de tres testigos externos (configuración, sesión, credencial sintética) no cambiaron al finalizar cada árbol gestionado. No es una auditoría de todos los archivos de un usuario Windows. |
 | Motor común, fuera de la ventana | Catálogo, low/high atribuidos, sesión reabierta, memoria tras reinicio, delegación `main/low → child/high` y abort con desconexión del receptor: aprobados. |
-| Permisos | En diagnóstico local sin HOME ni red del host, la distribución npm 5.0.0 permitió la lectura del testigo fuera del proyecto sin pregunta. Con el [cambio oficial de Gentle Shell](https://github.com/Gentleman-Programming/gentle-shell/commit/ad183931612106fe1cee05d53979e1caef725cf5) el mismo hijo produjo `confirm`: denegar impidió la lectura; aceptar devolvió el contenido. Se fijaron el diff y cinco postimágenes, sin modificar GPUI. Retirar el backport al calificar una versión publicada que supere la misma sonda. No se observó ese diálogo en la ventana Windows. |
-| Cierre con un hijo activo | No verificado en GPUI. En los tres escenarios el Job vació sus procesos y la ventana externa sobrevivió, pero el receptor del hijo **no recibió ninguna petición**. No equivale a matar un subagente ocupado ni a probar la pérdida de su supervisor. |
+| Permisos | La distribución npm 5.0.0 permitía la lectura del testigo fuera del proyecto sin pregunta. Con el [cambio oficial de Gentle Shell](https://github.com/Gentleman-Programming/gentle-shell/commit/ad183931612106fe1cee05d53979e1caef725cf5), denegar impidió la lectura y aceptar devolvió el contenido, primero en control aislado y después en GPUI Windows. Se fijaron el diff y cinco postimágenes, sin modificar GPUI. Retirar el backport al calificar una versión publicada que supere la sonda. |
+| Cierre con un hijo activo | Aprobado en GPUI Windows Server: primer fragmento del hijo observado; 11 procesos antes del cierre; Job vacío y receptor desconectado después. Pendiente repetir la experiencia humana en Windows 11. |
 
 ## Diagnóstico reproducible
 
@@ -21,7 +32,7 @@ El workflow completo queda sólo bajo `workflow_dispatch`; no volverá a ejecuta
 
 La [ejecución focal 1/2](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45931868127) falló antes de abrir la ventana propia: el camino corto llamó G2 antes de definir `GENTLE_SHELL_BIN` (`KeyError`, G2 vacío). Es un error de orden del laboratorio, no un resultado de producto. La segunda ejecución será la última autorizada en esta sesión.
 
-La prueba focal exige en la ventana denegación sin lectura, aceptación con lectura y pérdida del propietario con un hijo que ya haya emitido su primer fragmento. No acepta una llamada sintética a una herramienta que el modelo no recibió. El informe no exporta sesiones, cabeceras, cuerpos ni perfiles.
+La prueba focal exigió en la ventana denegación sin lectura, aceptación con lectura y pérdida del propietario con un hijo que ya había emitido su primer fragmento. No aceptó una llamada sintética a una herramienta que el modelo no recibió. El informe no exporta sesiones, cabeceras, cuerpos ni perfiles.
 
 ## Integración preparada
 
