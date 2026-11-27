@@ -1,6 +1,6 @@
 // Sólo en el runner: WebView2 real del EXE, sin instrumentar el bundle oficial.
 import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 
 const [root, project, report] = process.argv.slice(2).map(p => resolve(p));
 const delay = ms => new Promise(r => setTimeout(r, ms));
-let stage = 'arranque', browser;
+let stage = 'arranque', browser, ui;
 const probe = createServer();
 await new Promise((ok, fail) => probe.once('error', fail).listen(0, '127.0.0.1', ok));
 const port = probe.address().port;
@@ -26,6 +26,7 @@ async function until(fn, ms = 90000) {
 }
 try {
   await until(() => fetch(`http://127.0.0.1:${port}/json/version`).then(r => r.ok, () => false));
+  stage = 'conectar al navegador';
   browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
   stage = 'shell';
   const pages = () => browser.contexts().flatMap(c => c.pages());
@@ -46,12 +47,14 @@ try {
   // Sustituye sólo el diálogo COM por su resultado; usa el mismo comando abrir,
   // ticket de un uso y WebView hijo privado de la aplicación distribuida.
   await shell.evaluate(carpeta => window.__TAURI__.core.invoke('abrir', {carpeta}), project);
-  const ui = await until(() => pages().find(p => /^http:\/\/127\.0\.0\.1:\d+\//.test(p.url())));
+  stage = 'vista hija';
+  ui = await until(() => pages().find(p => /^http:\/\/127\.0\.0\.1:\d+\//.test(p.url())));
   await ui.waitForURL(/\/session(?:[/?#]|$)/);
   assert.equal(Buffer.from(new URL(ui.url()).pathname.split('/')[1], 'base64url').toString(), project);
   const model = ui.locator('button[data-action="prompt-model"]:not([data-control-type="dialog"])');
   stage = 'modelo conectado';
   await model.click({timeout: 90000});
+  stage = 'opción del modelo';
   const key = 'opencode-omniroute:labcpa/lab-reasoner';
   await ui.locator(`[data-key="${key}"], [data-option-key="${key}"]`).click();
   stage = 'esfuerzos';
@@ -64,6 +67,17 @@ try {
   await writeFile(report, 'WebView2: proyecto Unicode, modelo conectado seleccionado y esfuerzos low/high seleccionados en la UI oficial.\n');
 } catch {
   console.error(`WebView2: fallo en ${stage}`); // No publicar URL de bootstrap, cookies ni perfiles.
+  if (ui) console.log(await ui.evaluate(() => ({
+    modelo: document.querySelector('[data-action="prompt-model"]')?.tagName,
+    variante: !!document.querySelector('[data-action="prompt-model-variant"], button[aria-label="Choose model variant"]'),
+    opciones: document.querySelectorAll('[data-option-key], [data-key]').length,
+  })).catch(() => 'Vista cerrada'));
+  if (stage === 'arranque') {
+    console.error(`EXE: ${exe.exitCode ?? 'en ejecución'}`);
+    execFileSync('pwsh', ['-NoProfile', '-Command',
+      `Get-Process -Id ${exe.pid} -ErrorAction SilentlyContinue | Select-Object MainWindowTitle,Responding; ` +
+      `Write-Host ('Procesos WebView2 del EXE: ' + @(Get-CimInstance Win32_Process -Filter "ParentProcessId=${exe.pid} AND Name='msedgewebview2.exe'").Count)`], {stdio:'inherit'});
+  }
   process.exitCode = 1;
 } finally {
   await browser?.close().catch(() => {});
