@@ -184,19 +184,27 @@ def run(root, node, report, stack):
             j.finish()
     # Mismo perfil y proyecto, ventanas separadas. Arranque observable, no un benchmark de usabilidad.
     env['GENTLE_SHELL_BIN'] = str(root/'node_modules/.bin/gentle-shell.cmd')
+    providers['main'].mode = 'normal'
     for label, cmd in [('conpty',[sys.executable,'-IB',HERE/'pty_probe.py',root/'pty',node,launcher]),
-                       ('gpui',[next((root/'gpui').rglob('gentle-shell-gpui.exe')),project])]:
+                       ('gpui',[next((root/'gpui').rglob('gentle-shell-gpui.exe')),project,'--prompt','GS-GPUI'])]:
         env.pop('GENTLE_SHELL_INTERACTIVE_HOST',None)
         j = Job()
         try:
-            worker = j.launch(cmd,project,env); time.sleep(18)
+            offset=len(providers['main'].markers)
+            worker = j.launch(cmd,project,env)
+            # Un PE vivo o un byte VT al arrancar no prueban que la UI comuniqué con el agente.
+            deadline=time.monotonic()+90
+            marker='GS-'+label.upper()
+            def received(): return any(marker in tags and v=='low' for tags,v in providers['main'].markers[offset:])
+            while time.monotonic()<deadline and worker.poll() is None and not received(): time.sleep(.25)
+            if received(): time.sleep(2)
             rows = j.sample()
             report[label] = dict(procesos=len(rows), privados_MiB=round(sum(x['private_bytes'] for x in rows)/2**20,1),
-                                 cpu_s=round(sum(x['cpu_s'] for x in rows),2),activo=worker.poll() is None)
+                                 cpu_s=round(sum(x['cpu_s'] for x in rows),2),activo=worker.poll() is None, turno_en_receptor=received())
             if label=='conpty': report[label]['salida_vt']=(project/'pty.ok').exists()
-            if worker.poll() is not None or (label=='conpty' and not report[label]['salida_vt']): failures.append(label)
+            if not received() or worker.poll() is not None or (label=='conpty' and not report[label]['salida_vt']): failures.append(label)
         finally:
-            j.finish(); report['arboles_vacios'].append(label)
+            j.finish(); report.setdefault('arboles_vacios',[]).append(label)
     check(not failures,'ensayos fallidos: '+','.join(failures))
 
 

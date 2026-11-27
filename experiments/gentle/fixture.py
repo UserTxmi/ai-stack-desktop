@@ -21,7 +21,7 @@ class GentleHandler(Handler):
         raw = self.rfile.read(size)
         data = json.loads(raw)
         users = json.dumps([m.get('content') for m in data.get('messages', []) if m.get('role') == 'user'])
-        tags = [t for t in ('GS-LOW', 'GS-HIGH', 'GS-CHILD', 'GS-DELEGATE', 'GS-CANCEL') if t in users]
+        tags = [t for t in ('GS-LOW', 'GS-HIGH', 'GS-CHILD', 'GS-DELEGATE', 'GS-CANCEL', 'GS-CONPTY', 'GS-GPUI') if t in users]
         self.server.markers.append((tags, data.get('reasoning_effort')))
         if self.server.delegate and 'GS-DELEGATE' in tags and data['model'] == MODEL:
             self.server.delegate = False
