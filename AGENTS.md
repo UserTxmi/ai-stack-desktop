@@ -1,6 +1,6 @@
 # Instrucciones del proyecto
 
-**Corrección 2C `0.0.4-dev`:** la VPS detectó la dependencia VC++ x64 y el selector vacío en 0.0.3-dev. La [regresión del selector en WebView2 y descarga anónima](docs/PHASE2C_REPORT.md) están verificadas en Windows Server. Falta repetir la prueba interactiva en la VPS; no avanzar de fase.
+**2C cerrada:** [validación interactiva en Windows de `0.0.4-dev`](docs/PHASE2C_REPORT.md). Conservar su ruta OpenCode como recuperación. La siguiente autorización es una PoC aislada de Gentle Shell/Pi con OmniRoute, proveedor sintético y Actions Windows x64; comparar ConPTY y GPUI antes de migrar.
 
 **Revisión 2C:** el usuario aprobó la prueba interactiva básica de 2B y autorizó `0.0.3-dev`: workspace local oficial con proveedor sintético, servidor supervisado y ZIP portable en Actions. [Evidencia 2C](docs/PHASE2C_REPORT.md). El instalador definitivo y 1B-Desktop siguen fuera de este alcance.
 

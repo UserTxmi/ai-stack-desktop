@@ -1,6 +1,10 @@
 # Fase 2C · Workspace OpenCode · 0.0.4-dev
 
-## Bloqueo interactivo y corrección 0.0.4-dev
+## Aceptación interactiva · bloqueo 2C cerrado
+
+El responsable confirmó en Windows con **0.0.4-dev** que pudo preparar e iniciar el stack, crear el proyecto, seleccionar el modelo sintético y obtener **`LABLABLAB` con `low`** y **`LABLABLAB` con `high`**. Es evidencia interactiva comunicada por el usuario; la atribución del esfuerzo en el receptor corresponde a la suite automatizada. No se comunicó la edición de Windows de esta última prueba. Se conserva este EXE como referencia de recuperación.
+
+## Histórico del bloqueo y corrección 0.0.4-dev
 
 **[ZIP sin autenticación](https://nightly.link/UserTxmi/ai-stack-desktop/actions/runs/45916757368/AI-Stack-Desktop-0.0.4-dev-win-x64.zip)** · [Suite completa aprobada](https://github.com/UserTxmi/ai-stack-desktop/actions/runs/45916757368) · commit del EXE `e1d05e721022fc5e1f993150f1306cd221153f9e`. En Windows Server 2025 x64, WebView2 `157.0.4341.46` abrió el proyecto Unicode, seleccionó el modelo por su ID y comprobó el cambio del control de esfuerzo a `low` y después a `high`. Pasaron también preparación, recuperación, cierre y regresiones completas W1. Esta automatización usa el DOM real con eventos sintéticos; no certifica el diálogo COM, el foco ni la experiencia en la VPS.
 
@@ -38,4 +42,4 @@ Histórico: la tabla y los enlaces siguientes corresponden al **0.0.3-dev anteri
 
 Desarrollo local: compilación TypeScript, comprobación Rust cruzada con tests para x64 Windows GNU y siete pruebas del receptor sintético aprobadas. [CI Windows](https://github.com/UserTxmi/ai-stack-desktop/actions/workflows/windows-w1.yml): compilación MSVC, preparación, cuatro Jobs, cliente del workspace atravesando la misma frontera que la vista, reapertura tras reinicio, suite W1 y empaquetado. El ZIP sólo se emite después de la suite completa. El resultado de un run no se infiere de esta descripción.
 
-**Windows 11 interactivo 2C: pendiente.** El cliente headless no comprueba renderizado, foco, selector de carpetas ni diálogos de WebView2. La única nueva aprobación de usuario registrada es la [prueba básica de 2B](PHASE2B_REPORT.md); no cierra 1B-Desktop.
+El pendiente interactivo descrito en el histórico queda resuelto por la confirmación al inicio del informe. La aceptación de 2C no cierra 1B-Desktop.

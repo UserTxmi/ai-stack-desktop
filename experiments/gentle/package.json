@@ -1,0 +1,10 @@
+{
+  "name": "ai-stack-gentle-lab",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.6.1",
+    "gentle-engram": "0.8.0",
+    "gentle-pi": "5.0.0"
+  }
+}
