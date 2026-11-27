@@ -37,8 +37,9 @@ def verify(root, project, node, env, sources, report):
     exe=next((root/'gpui').rglob('gentle-shell-gpui.exe')); external_exe=ext/exe.name
     shutil.copyfile(exe,external_exe)
     eh=ext/'agent'; eh.mkdir(); (eh/'sessions').mkdir()
+    (ext/'config').mkdir(); (eh/'sessions/externo').mkdir()
     sentinels={eh/'auth.json':b'{"outside":{"type":"api_key","key":"G2-EXTERNO"}}',
-               eh/'settings.json':b'{"defaultProvider":"outside"}',eh/'sessions/test.jsonl':b'{}\n'}
+               ext/'config/externo.json':b'{"canary":"G2-EXTERNO"}',eh/'sessions/externo/test.jsonl':b'{}\n'}
     for path,data in sentinels.items(): path.write_bytes(data)
     foreign.update(GENTLE_SHELL_GPUI_DATA_DIR=str(ext/'ui'), GENTLE_SHELL_HOME=str(eh),
                    GENTLE_PI_CONFIG_HOME=str(ext/'config'), GENTLE_SHELL_BIN=env['GENTLE_SHELL_BIN'],
@@ -56,14 +57,20 @@ def verify(root, project, node, env, sources, report):
         pristine=snapshot()
         for phase in ('deny','allow','active-close'):
             ours=Job(); r[phase]={}; rr=r[phase]
+            offsets={k:len(s.markers) for k,s in sources.items()}
+            test_env=env.copy(); desktop=root/('ui-'+phase); desktop.mkdir()
+            # La preparación ya se completó; omitir la bienvenida de primera ejecución.
+            (desktop/'settings.json').write_text('{"onboarding":{"done":true,"version":"0.1.28"}}')
+            test_env['GENTLE_SHELL_GPUI_DATA_DIR']=str(desktop)
+            work=root/('proyecto-'+phase);work.mkdir()
             parent.delegate=True; child.consent_answer=None; child.consent_offered=False
             # Fuera del proyecto, dentro de la raíz de ensayo; ningún fichero del usuario.
             child.consent_path=root/(phase+'.txt') if phase!='active-close' else None
             if child.consent_path: child.consent_path.write_text('G2-CONTENIDO')
             child.mode='cancel' if phase=='active-close' else 'normal'; offset=len(child.events)
             try:
-                ours.launch([exe,project,'--prompt','GS-DELEGATE '+phase],project,env)
-                rec=wait(lambda:record(root/'desktop-data',ours),60,'sin instancia propia')
+                ours.launch([exe,work,'--prompt','GS-DELEGATE '+phase],work,test_env)
+                rec=wait(lambda:record(desktop,ours),60,'sin instancia propia')
                 check(rec['port']!=external['port'] and rec['pid']!=external['pid'],'instancia compartida')
                 hwnd=wait(lambda:window(rec['pid']),60,'sin ventana propia')
                 if phase=='active-close':
@@ -77,8 +84,9 @@ def verify(root, project, node, env, sources, report):
                     key=ord('Y' if phase=='allow' else 'N')
                     # Enviar a la ventana del PID del Job, nunca al escritorio global.
                     for _ in range(8):
-                        C.windll.user32.PostMessageW(W.HWND(hwnd),0x100,key,1)
-                        C.windll.user32.PostMessageW(W.HWND(hwnd),0x101,key,0xC0000001)
+                        scan=C.windll.user32.MapVirtualKeyW(key,0)<<16
+                        C.windll.user32.PostMessageW(W.HWND(hwnd),0x100,key,1|scan)
+                        C.windll.user32.PostMessageW(W.HWND(hwnd),0x101,key,0xC0000001|scan)
                         time.sleep(.6)
                         if child.consent_answer: break
                     wait(lambda:child.consent_answer,15,'sin resultado posterior a la tecla')
@@ -87,6 +95,7 @@ def verify(root, project, node, env, sources, report):
             except RuntimeError as e:
                 errors.append(phase); rr['fallo']=str(e)
             finally:
+                rr['marcas']={k:s.markers[offsets[k]:][:8] for k,s in sources.items()}
                 ours.finish(); rr['job_vacio']=True
             if phase=='active-close' and 'fallo' not in rr:
                 wait(lambda:any(k=='cancelled' and e=='high' for k,e,_ in child.since(offset)),18,'receptor hijo no cancelado')

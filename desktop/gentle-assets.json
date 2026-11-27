@@ -1,0 +1,6 @@
+{"artifacts":[
+  {"id":"engram","version":"3.7.2","url":"https://github.com/Gentleman-Programming/engram/releases/download/v3.7.2/engram_3.7.2_windows_amd64.zip","sha256":"515a716ce966202058d4b9f310626fde72583cfc64ccefbf0dcc81456260089c"},
+  {"id":"gpui","version":"0.1.28","url":"https://github.com/Gentleman-Programming/gentle-shell-gpui/releases/download/v0.1.28/gentle-shell-gpui-0.1.28-windows-x86_64.zip","sha256":"d4294a0dc3b031de82a698377be81f21bbe01b28f95f9b30a44fc8daccbcc8de"},
+  {"id":"git","version":"2.56.1","url":"https://github.com/git-for-windows/git/releases/download/v2.56.1.windows.1/MinGit-2.56.1-64-bit.zip","sha256":"4a92850b6e917da4fd010669b614b55dccf5b0ec333a534cc4be4700dfefdafd"},
+  {"id":"consent","version":"ad183931","url":"https://github.com/Gentleman-Programming/gentle-shell/commit/ad183931612106fe1cee05d53979e1caef725cf5.diff","sha256":"ab6b910b3457fe4c8b602b918bff218f44ea9da28d3498a0a4511cd17938c72c"}
+]}

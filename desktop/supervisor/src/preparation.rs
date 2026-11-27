@@ -108,6 +108,26 @@ pub fn verify(install: &Install) -> Result<()> {
 }
 
 pub fn prepare(install: &Install, update: impl FnMut(Progress)) -> Result<PreparationStats> {
+    prepare_selected(install, update, &COMPONENTS, false)
+}
+const GENTLE_COMPONENTS: &[(&str, &str)] = &[
+    ("cpa", "CLIProxyAPI"),
+    ("node", "Node / npm"),
+    ("package", "OmniRoute"),
+    ("git", "MinGit"),
+    ("engram", "Engram"),
+    ("gpui", "Gentle Shell GPUI"),
+    ("gentle", "Gentle Shell / Pi"),
+];
+pub fn prepare_gentle(install: &Install, update: impl FnMut(Progress)) -> Result<PreparationStats> {
+    prepare_selected(install, update, GENTLE_COMPONENTS, true)
+}
+fn prepare_selected(
+    install: &Install,
+    update: impl FnMut(Progress),
+    components: &[(&str, &str)],
+    gentle: bool,
+) -> Result<PreparationStats> {
     let tmp = install.temporary();
     let stage = tmp.join("trabajo");
     let mut p = Prepare {
@@ -119,7 +139,12 @@ pub fn prepare(install: &Install, update: impl FnMut(Progress)) -> Result<Prepar
         owns_stage: false,
         update,
     };
-    let result = p.run();
+    if gentle {
+        let extra: Inventory =
+            serde_json::from_str(include_str!("../../gentle-assets.json")).unwrap();
+        p.artifacts.artifacts.extend(extra.artifacts);
+    }
+    let result = p.run(components);
     let clean = if p.owns_stage {
         discard(&p.stage)
     } else {
@@ -155,7 +180,7 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
         });
     }
 
-    fn run(&mut self) -> Result<()> {
+    fn run(&mut self, components: &[(&str, &str)]) -> Result<()> {
         self.report(
             "Instalación",
             "Comprobando carpetas y recuperando preparación anterior",
@@ -168,7 +193,7 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
         self.owns_stage = true;
         folder(&self.downloads)?;
         let runtime = self.install.runtime();
-        for (id, label) in COMPONENTS {
+        for &(id, label) in components {
             self.report(label, "Verificando archivos instalados", 0, None);
             match verify_component(&runtime, id, &self.artifacts, true) {
                 Ok(()) => {
@@ -227,6 +252,7 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
         match id {
             "package" => self.gateway(runtime)?,
             "peers" => self.peers(runtime)?,
+            "gentle" => self.gentle(runtime)?,
             _ => {
                 let archive = self.fetch(id, label)?;
                 self.report(label, "Extrayendo archivo verificado", 0, None);
@@ -309,6 +335,52 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
             }
         }
         self.sqlite(&self.stage, &env)?;
+        Ok(())
+    }
+
+    fn gentle(&mut self, runtime: &Path) -> Result<()> {
+        let dir = self.stage.join("gentle");
+        folder(&dir)?;
+        for (name, data) in [
+            (
+                "package.json",
+                include_str!("../../../experiments/gentle/package.json"),
+            ),
+            (
+                "package-lock.json",
+                include_str!("../../../experiments/gentle/package-lock.json"),
+            ),
+        ] {
+            fs::write(dir.join(name), data).safe()?;
+        }
+        let mut env = self.build_env(&runtime.join(NODE))?;
+        self.npm(runtime, &dir, &env, false)?;
+        let pkg = dir.join("node_modules/gentle-pi");
+        let patch: Value =
+            serde_json::from_str(include_str!("../../../experiments/gentle/consent.json")).unwrap();
+        let mut args = vec!["-c".into(), "core.autocrlf=false".into(), "apply".into()];
+        for path in patch["files"].as_object().unwrap().keys() {
+            args.push(format!("--include={path}"));
+        }
+        args.push(s(&self.fetch("consent", "Consentimiento Gentle Shell")?));
+        env.insert("GIT_CEILING_DIRECTORIES".into(), s(&dir));
+        run(
+            &runtime.join("git/cmd/git.exe"),
+            args,
+            &pkg,
+            &env,
+            Duration::from_secs(30),
+            "Consentimiento",
+        )?;
+        let src = self.install.root().join("bin/gentle-ai.exe");
+        let bundle = pkg.join(".gentle-ai/v5.0.0");
+        fs::create_dir_all(&bundle).safe()?;
+        fs::copy(src, bundle.join("gentle-ai.exe")).safe()?;
+        fs::copy(
+            self.install.root().join("bin/integrity.json"),
+            bundle.join("integrity.json"),
+        )
+        .safe()?;
         Ok(())
     }
 
@@ -514,7 +586,7 @@ fn check_lock(path: &Path, key: &str, expected: &Artifact) -> Result<()> {
     }
 }
 
-fn digest(path: &Path) -> Result<String> {
+pub(super) fn digest(path: &Path) -> Result<String> {
     let mut h = Sha256::new();
     let mut f = disk(File::open(path), &format!("Leer {}", path.display()))?;
     disk(io::copy(&mut f, &mut h), "Calcular SHA-256")?;
@@ -577,6 +649,65 @@ fn verify_component(root: &Path, id: &str, inventory: &Inventory, installed: boo
         check_hash(root, &name, &hash)?;
     }
     match id {
+        "git" => {
+            check_hash(
+                root,
+                "git/cmd/git.exe",
+                "177bc8a9af84fa3a400c694c975fda731d048279c074e1a93947ce8b067ebb48",
+            )?;
+            check_hash(
+                root,
+                "git/usr/bin/sh.exe",
+                "5490d0da5e7cf9d92068cc48fcc590f2bcf8564add8ff91c3b5fe541eb2d72e3",
+            )?;
+        }
+        "engram" => check_hash(
+            root,
+            "engram/engram.exe",
+            "207a1a56d0a277ca4f84427130c5aafbdeddd0f698b246736b54cde9b3c08098",
+        )?,
+        "gpui" => check_hash(
+            root,
+            "gpui/gentle-shell-gpui.exe",
+            "3fb8fa1e7b50374d2ced7388b85785709a542fe2180c982e3cab6858fe41cf2f",
+        )?,
+        "gentle" => {
+            let patch: Value =
+                serde_json::from_str(include_str!("../../../experiments/gentle/consent.json"))
+                    .unwrap();
+            for (p, h) in patch["files"].as_object().unwrap() {
+                check_hash(
+                    root,
+                    &format!("gentle/node_modules/gentle-pi/{p}"),
+                    h.as_str().unwrap(),
+                )?;
+            }
+            for (p, h) in [
+                (
+                    "gentle-pi/bin/gentle-shell.mjs",
+                    "e4d257c1cbe67005e87edf49379c5e50708dab2e8389f565e0f8cb57fec9bb60",
+                ),
+                (
+                    "@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+                    "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+                ),
+                (
+                    "gentle-engram/index.ts",
+                    "78afeea4a150441854cd8ce49fbf043a3ee117dc6a0d8ce8519c66a7cfe5833c",
+                ),
+            ] {
+                check_hash(root, &format!("gentle/node_modules/{p}"), h)?;
+            }
+            let rel = "gentle/node_modules/gentle-pi/.gentle-ai/v5.0.0";
+            let manifest = json_file(&check_regular(root, &format!("{rel}/integrity.json"))?)?;
+            check_hash(
+                root,
+                &format!("{rel}/gentle-ai.exe"),
+                manifest["binarySha256"]
+                    .as_str()
+                    .ok_or("Falta huella de Gentle AI")?,
+            )?;
+        }
         "node" => {
             check_hash(
                 root,

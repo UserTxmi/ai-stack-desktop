@@ -127,7 +127,13 @@ impl Api {
             })?
         })
     }
-    pub fn provision(&mut self, job: &Job, cpa: &Api, password: &str) -> Result<String> {
+    pub fn provision(
+        &mut self,
+        job: &Job,
+        cpa: &Api,
+        password: &str,
+        gentle: bool,
+    ) -> Result<String> {
         self.request(job, "POST", "/api/auth/login", json!({"password":password}))?;
         self.csrf = field(
             &self.request(job, "GET", "/api/auth/csrf", Value::Null)?,
@@ -160,12 +166,17 @@ impl Api {
             ("context_length", json!(32768)),
             ("max_output_tokens", json!(2048)),
         ] {
-            self.request(
-                job,
-                "PATCH",
-                "/api/model-capability-overrides",
-                json!({"target":TARGET,"key":k,"value":v}),
-            )?;
+            for target in [Some(TARGET), gentle.then_some("labcpa/lab-helper")]
+                .into_iter()
+                .flatten()
+            {
+                self.request(
+                    job,
+                    "PATCH",
+                    "/api/model-capability-overrides",
+                    json!({"target":target,"key":k,"value":v}),
+                )?;
+            }
         }
         self.request(job,"PATCH","/api/resilience",json!({"requestQueue":{"maxWaitMs":15000,"executionMaxWaitMs":90000,"concurrentRequests":1,"autoEnableApiKeyProviders":true}}))?;
         self.request(

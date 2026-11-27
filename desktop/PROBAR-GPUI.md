@@ -1,0 +1,9 @@
+# AI Stack Desktop 0.0.5-dev · GPUI · Windows 11 x64
+
+1. Extraiga **todo** el ZIP en una carpeta privada nueva, corta y escribible de un disco local NTFS, por ejemplo `%LOCALAPPDATA%\AI05`. No extraiga encima de 0.0.4-dev. Reserve varios GiB y tenga acceso a GitHub, Node y npm durante la preparación inicial. Use una cuenta estándar.
+2. Abra `bin\ai-stack-gentle.exe`. La consola muestra la preparación y conserva la propiedad de los procesos; GPUI es la única ventana de trabajo. No instale nada desde Setup, ni inicie sesión en proveedores. Si GPUI muestra su pantalla de configuración opcional, vuelva al workspace. Para reintentar una preparación interrumpida vuelva a abrir el EXE.
+3. En el proyecto demo, compruebe los modelos `labcpa/lab-reasoner` y `labcpa/lab-helper`, ambos sintéticos. Pruebe `low` y `high`: la respuesta ordinaria es `LABLABLAB`. En `/gentle:profiles`, asigne modelo y esfuerzo al orquestador y a `gentle-ai-explore`; aplique el perfil con los controles oficiales.
+4. En sesiones nuevas, escriba `LAB-HIJO-PERMISO`: el helper pide leer **nota-demo.txt**, fuera del proyecto y dentro de la instalación. Deniegue en la ventana; repita en otra sesión y permita. No use YOLO. En otra sesión envíe `LAB-DELEGAR`, observe el helper en actividad y cierre la aplicación durante la respuesta lenta. Reabra y compruebe el historial.
+5. Si ya usa Gentle Shell, puede dejar abierta su ventana externa: ambas deben seguir independientes y cerrar el portable no debe cerrar la externa. Los datos de prueba viven en `datos\gentle`, incluidos GPUI, sesiones Pi, asignaciones y Engram. No comparta estos archivos. Para volver, cierre GPUI y abra la instalación separada de 0.0.4-dev.
+
+Es una compilación x64 de desarrollo sin firma, para validación interactiva. El instalador clásico y la distribución de producción son posteriores.

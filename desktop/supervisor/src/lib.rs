@@ -12,7 +12,9 @@ use std::{
     time::{Duration, Instant},
 };
 mod acquire;
+mod gentle;
 mod http;
+pub use gentle::run_gentle;
 mod install;
 mod job;
 mod preparation;
@@ -22,7 +24,7 @@ use http::Api;
 pub use install::Install;
 pub use job::worker_mode;
 use job::{Job, Spec};
-pub use preparation::{prepare, verify, PreparationStats, Progress};
+pub use preparation::{prepare, prepare_gentle, verify, PreparationStats, Progress};
 use sha2::{Digest, Sha256};
 pub use workspace::Workspace;
 type Result<T> = std::result::Result<T, String>;
@@ -244,7 +246,7 @@ impl Supervisor {
             return Err("Este supervisor ya posee el perfil".into());
         }
         self.error = None;
-        let result = self.inner();
+        let result = self.inner(false);
         if let Err(ref msg) = result {
             let stage = ROLES
                 .get(self.services.len().saturating_sub(1))
@@ -256,9 +258,11 @@ impl Supervisor {
         }
         result
     }
-    fn inner(&mut self) -> Result<()> {
-        self.preparation = verify(&self.install);
-        self.preparation.clone()?;
+    fn inner(&mut self, gentle: bool) -> Result<()> {
+        if !gentle {
+            self.preparation = verify(&self.install);
+            self.preparation.clone()?;
+        }
         self.install.check_layout()?;
         let profile = format!("demo-{}", &secret()[..20]);
         let tmp = self.install.root().join("preparacion").join(&profile);
@@ -294,7 +298,7 @@ impl Supervisor {
         let spec = Spec {
             exe: node.clone(),
             args: vec![s(&demo)],
-            input: json!({"port":ports[0],"key":source,"fixture":fix}).to_string(),
+            input: json!({"port":ports[0],"key":source,"fixture":fix,"gentle":gentle,"note":self.install.root().join("datos/gentle/nota-demo.txt"),"receipt":tmp.join("hijo-activo.txt")}).to_string(),
         };
         self.fixture = Some(Job::launch(
             spec,
@@ -305,9 +309,15 @@ impl Supervisor {
         fapi.auth = format!("Bearer {source}");
         ready(self.fixture.as_mut().unwrap(), &mut fapi, "/v1/models")?;
         let cpa = config.join("cpa.yaml");
+        let mut models = vec![
+            json!({"name":"lab-reasoner","alias":"lab-reasoner","thinking":{"levels":fix["efforts"]}}),
+        ];
+        if gentle {
+            models.push(json!({"name":"lab-reasoner","alias":"lab-helper","thinking":{"levels":fix["efforts"]}}));
+        }
         dump(
             &cpa,
-            &json!({"server":{"host":"127.0.0.1","port":ports[1]},"management":{"disable-control-panel":true},"access":{"api-keys":[key]},"oauth":{"auth-dir":data_root.join("cpa-auth")},"api-keys":{"openai-compatibility":[{"name":"fixture","base-url":format!("{}/v1",fapi.origin()),"keys":[{"api-key":source}],"models":[{"name":"lab-reasoner","alias":"lab-reasoner","thinking":{"levels":fix["efforts"]}}]}]}}),
+            &json!({"server":{"host":"127.0.0.1","port":ports[1]},"management":{"disable-control-panel":true},"access":{"api-keys":[key]},"oauth":{"auth-dir":data_root.join("cpa-auth")},"api-keys":{"openai-compatibility":[{"name":"fixture","base-url":format!("{}/v1",fapi.origin()),"keys":[{"api-key":source}],"models":models}]}}),
         )?;
         let mut api = Api::new(ports[1]);
         api.auth = format!("Bearer {key}");
@@ -354,10 +364,13 @@ impl Supervisor {
         )?;
         let (c, g) = self.services.split_at_mut(1);
         let gw = &mut g[0];
-        let token = gw.api.provision(&gw.job, &c[0].api, &password)?;
+        let token = gw.api.provision(&gw.job, &c[0].api, &password, gentle)?;
         gw.api = Api::new(ports[2]);
         gw.api.auth = format!("Bearer {token}");
         let row = healthy(gw, 1)?;
+        if gentle {
+            return Ok(());
+        }
         let project_env = demo_env(&self.install, &profile, "oc", &node)?;
         let data = PathBuf::from(&project_env["XDG_DATA_HOME"]).join("opencode");
         dir(&data)?;
