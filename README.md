@@ -1,12 +1,12 @@
-# AI Stack Desktop · prototipo Windows x64 `0.0.4-dev`
+# AI Stack Desktop · prototipo Windows x64 `0.0.5-dev`
 
-**Candidato 0.0.5-dev:** [integración GPUI y G2 aprobada en Windows x64](docs/GENTLE_G2.md). El ZIP del candidato no se emitió porque se agotó el límite acordado de dos ejecuciones focales; el ZIP de recuperación sigue disponible abajo.
+**[Descargar 0.0.5-dev GPUI para Windows x64 sin cuenta](https://nightly.link/UserTxmi/ai-stack-desktop/actions/runs/45934314914/AI-Stack-Desktop-0.0.5-dev-win-x64.zip)** · [Guía para Windows 11](desktop/PROBAR-GPUI.md) · [Evidencia G2 y del ZIP](docs/GENTLE_G2.md). Extraiga el ZIP en una carpeta nueva y abra `bin\ai-stack-gentle.exe`. La primera apertura prepara las dependencias automáticamente. SHA-256: `fd13d118e919f1987928fe0e315b8ba622e8b6389fb0f77219270ba228660aaf`.
 
 **[Descargar Windows x64 0.0.4-dev sin cuenta](https://nightly.link/UserTxmi/ai-stack-desktop/actions/runs/45916757368/AI-Stack-Desktop-0.0.4-dev-win-x64.zip)** · [Workspace 2C y resultados](docs/PHASE2C_REPORT.md) · [Guía para Windows](desktop/PROBAR.md). Extraiga el ZIP a una carpeta privada nueva, abra `bin\ai-stack-desktop.exe`, prepare e inicie el stack en **Servicios** y abra su carpeta desde **Proyectos**. La respuesta del agente es sintética.
 
 **1B-CI aprobada para W1 corregido; 1B-Desktop pendiente.** [Preparación automática 2B](docs/PHASE2B_REPORT.md) · [Prueba interactiva básica 2A en Windows 11](docs/PHASE2A_REPORT.md#prueba-interactiva-básica-en-windows-11) · [Resultados de integración W1](docs/PHASE1B_CI_REPORT.md). El prototipo conecta una ventana Tauri a un supervisor nativo y usa únicamente el proveedor de demo. No es un instalador de producción.
 
-**2C cerrada por validación interactiva en Windows.** `0.0.4-dev` con OpenCode es la referencia de recuperación. Para desarrollo nuevo, el motor elegido es **Gentle Shell sobre Pi**; OmniRoute seguirá siendo el único proveedor del agente. [PoC Windows x64, comparación ConPTY/GPUI y recomendación](docs/GENTLE_POC.md). La PoC no reemplaza el EXE que se descarga arriba.
+**2C cerrada por validación interactiva en Windows.** `0.0.4-dev` con OpenCode es la referencia de recuperación. `0.0.5-dev` usa **Gentle Shell sobre Pi** con GPUI y el proveedor sintético de OmniRoute. [PoC Windows x64 y comparación ConPTY/GPUI](docs/GENTLE_POC.md).
 
 | Para decidir… | Leer |
 |---|---|

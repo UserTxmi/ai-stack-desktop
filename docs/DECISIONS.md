@@ -1,6 +1,6 @@
 # Registro de decisiones
 
-**D8 · GPUI como única interfaz de escritorio del candidato.** La [G2 focal](GENTLE_G2.md) supera coexistencia, permisos y cierre con delegación activa. El ZIP de `0.0.5-dev` queda pendiente de un ciclo de empaquetado posterior; no reemplaza OpenCode en 0.0.4-dev.
+**D8 · GPUI como única interfaz de escritorio del prototipo `0.0.5-dev`.** El usuario acepta G2 y autoriza el portable sintético. [ZIP y evidencia de entrega](GENTLE_G2.md). La validación interactiva en Windows 11 está pendiente; OpenCode sigue disponible en la referencia de recuperación `0.0.4-dev`.
 
 **Revisión posterior a 2C · D7 (dirección aceptada).** [Aceptación del usuario](PHASE2C_REPORT.md). Gentle Shell será el motor principal, Pi su runtime y OmniRoute su único proveedor gestionado. D1 y D3 siguen describiendo la referencia OpenCode, no el objetivo nuevo. Los perfiles de Gentle Shell asignan modelo y esfuerzo a `orchestrator` y a cada rol; no implementar un planificador, una memoria ni un chat paralelos. Conservar CLIProxyAPI, gateway, supervisor Rust, preparación y D5 (instalador EXE clásico). Separar los almacenes de ambos motores; volver al EXE del commit `e1d05e7` no requiere migrar bases. [PoC, alternativas y límites](GENTLE_POC.md). La promoción de una interfaz al EXE queda condicionada a la validación en escritorio.
 
