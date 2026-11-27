@@ -376,7 +376,11 @@ impl Accounts {
                 json!({}),
             )?;
         }
-        let gateway = g.api.request(&g.job, "GET", "/v1/models", Value::Null)?;
+        let gateway = if available.is_empty() {
+            json!({"data":[]})
+        } else {
+            g.api.request(&g.job, "GET", "/v1/models", Value::Null)?
+        };
         let mut models = Vec::new();
         for r in available {
             let raw = field(r, "/id")?;
