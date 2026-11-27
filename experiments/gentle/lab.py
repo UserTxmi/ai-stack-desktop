@@ -71,11 +71,12 @@ def run(root, node, report, stack):
     home = root/'agent'
     config = root/'config'
     home.mkdir(); config.mkdir()
-    bash = next((root/'git').rglob('bash.exe'))
+    # MinGit publica un sh POSIX privado, no el bash de PortableGit.
+    shell = (root/'git/usr/bin/sh.exe').resolve(strict=True)
     env.update(GENTLE_SHELL_HOME=str(home), GENTLE_PI_CONFIG_HOME=str(config), GENTLE_SHELL_NO_AUTO_SETUP='1',
                PI_OFFLINE='1', ENGRAM_DATA_DIR=str(root/'memory'), ENGRAM_PROJECT='gentle-lab',
                ENGRAM_BIN=str(engram), ENGRAM_URL=mem.origin, GENTLE_SHELL_INTERACTIVE_HOST='1',
-               PATH=f'{root}/git/cmd;{bash.parent};'+env['PATH'])
+               PATH=f'{root}/git/cmd;{shell.parent};'+env['PATH'])
     def memory_server(j):
         p = j.launch([engram, 'serve', mem.port], project, env)
         check(ready(j, p, mem, '/health')['service'] == 'engram', 'memoria no disponible')
@@ -138,7 +139,7 @@ def run(root, node, report, stack):
          'apiKey':'$GS_INFERENCE','compat':{'thinkingFormat':'openai','supportsReasoningEffort':True},'models':models}}})
     pkg = root/'node_modules/gentle-pi'; launcher = pkg/'bin/gentle-shell.mjs'
     dump(home/'settings.json', {'defaultProvider':'omniroute','defaultModel':'main/'+MODEL,'defaultThinkingLevel':'low',
-         'enabledModels':['omniroute/*'], 'shellPath':str(bash), 'packages':[str(root/'node_modules/gentle-engram')]})
+         'enabledModels':['omniroute/*'], 'shellPath':str(shell), 'packages':[str(root/'node_modules/gentle-engram')]})
     dump(config/'models.json', {'gentle-ai-explore':{'model':'omniroute/child/'+MODEL,'thinking':'high'}})
     report['catalogo_gateway'] = sorted(targets)
     sessions = {}
