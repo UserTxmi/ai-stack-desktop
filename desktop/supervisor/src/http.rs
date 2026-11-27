@@ -163,8 +163,8 @@ impl Api {
         )?;
         for (k, v) in [
             ("reasoning_efforts", json!("low,high")),
-            ("context_length", json!(32768)),
-            ("max_output_tokens", json!(2048)),
+            ("context_length", json!(if gentle { 262144 } else { 32768 })),
+            ("max_output_tokens", json!(if gentle { 4096 } else { 2048 })),
         ] {
             for target in [Some(TARGET), gentle.then_some("labcpa/lab-helper")]
                 .into_iter()

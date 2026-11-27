@@ -1,60 +1,43 @@
-name: Windows x64 · PoC Gentle Shell
+name: Windows x64 · Entrega portable GPUI 0.0.5-dev
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  poc:
+  entrega:
     runs-on: windows-2025
-    timeout-minutes: 50
+    timeout-minutes: 32
     env:
       PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Preparar W1 con versiones y hashes de recuperación
-        run: |
-          py -3.12 -B experiments/phase1/prepare.py --ci-stage binaries
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          py -3.12 -B experiments/phase1/prepare.py --ci-stage gateway
-      - name: Gentle Shell real, gateway y receptores sintéticos
-        id: gates
-        run: py -3.12 -B experiments/gentle/lab.py
-      - name: Conservar sólo el resumen público
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: gentle-sintetico-${{ github.run_id }}-${{ github.run_attempt }}
-          path: experiments/phase1/.lab/gentle-public.json
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 14
-      - name: Compilar el supervisor del portable MSVC x64
-        if: ${{ !cancelled() && (steps.gates.outcome == 'success' || steps.gates.outcome == 'failure') }}
-        id: build
+      - name: Compilar el supervisor portable MSVC x64
         working-directory: desktop
-        run: cargo build --release --locked -p w1-supervisor --bin ai-stack-gentle
-      - name: Preparación real y regresiones sobre el ejecutable de entrega
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: cargo build --release --locked --target x86_64-pc-windows-msvc -p w1-supervisor --bin ai-stack-gentle
+      - name: Preparar el auxiliar oficial Gentle AI para incluirlo en el ZIP
+        run: |
+          New-Item -ItemType Directory 'entrega-gentle/bin' | Out-Null
+          py -3.12 -B desktop/build-gentle-companion.py "$env:RUNNER_TEMP/gai-build" entrega-gentle/bin
+          if ($LASTEXITCODE) {exit $LASTEXITCODE}
+          Copy-Item desktop/target/x86_64-pc-windows-msvc/release/ai-stack-gentle.exe entrega-gentle/bin
+      - name: Probar los mismos binarios desde una instalación limpia
         run: |
           $root=Join-Path $env:RUNNER_TEMP 'AI05 ñ'
-          New-Item -ItemType Directory "$root/bin", 'entrega-gentle/bin' | Out-Null
-          Copy-Item desktop/target/release/ai-stack-gentle.exe "$root/bin"
-          $companion="$env:RUNNER_TEMP/gs/node_modules/gentle-pi/.gentle-ai/v5.0.0"
-          Copy-Item "$companion/gentle-ai.exe","$companion/integrity.json" "$root/bin"
-          Copy-Item "$root/bin/*" entrega-gentle/bin
-          .\desktop\ci-gentle.ps1 -Root $root
+          New-Item -ItemType Directory "$root/bin" | Out-Null
+          Copy-Item entrega-gentle/bin/* "$root/bin"
+          .\desktop\ci-gentle.ps1 -Root $root -Report entrega-gentle/pruebas.txt
       - name: Preparar ZIP por lista permitida
         run: |
-          Copy-Item desktop/PROBAR-GPUI.md,experiments/phase1/.lab/gentle-public.json entrega-gentle
-          py -3.12 -B desktop/notices.py entrega-gentle/TERCEROS-Rust.txt
+          Copy-Item desktop/PROBAR-GPUI.md,desktop/gentle-assets.json,experiments/gentle/consent.json,experiments/phase1/versions.json entrega-gentle
+          py -3.12 -B desktop/notices.py entrega-gentle/TERCEROS-Rust.txt --gentle
           if ($LASTEXITCODE) {exit $LASTEXITCODE}
-          $base='https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/v5.0.0'
-          Invoke-WebRequest "$base/LICENSE" -OutFile entrega-gentle/LICENSE-GentleAI.txt
+          Invoke-WebRequest 'https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/v5.0.0/LICENSE' -OutFile entrega-gentle/LICENSE-GentleAI.txt
+          if ((Get-FileHash entrega-gentle/LICENSE-GentleAI.txt).Hash -ne '2806e215dd306b614fe3211e24186652c7d56c1a57340537fc8f2f6822bc74f5') {throw 'Licencia de Gentle AI no coincide'}
           $env:GITHUB_SHA | Set-Content entrega-gentle/commit.txt
           (Get-ChildItem entrega-gentle -File -Recurse | ForEach-Object {"$((Get-FileHash $_.FullName).Hash)  $([IO.Path]::GetRelativePath((Resolve-Path entrega-gentle).Path,$_.FullName))"}) | Set-Content entrega-gentle/SHA256SUMS.txt
-      - name: ZIP interactivo 0.0.5-dev sólo tras aprobar G2 y el EXE
+      - name: Publicar ZIP portable de prueba
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: AI-Stack-Desktop-0.0.5-dev-win-x64

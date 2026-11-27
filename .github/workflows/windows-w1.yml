@@ -7,15 +7,6 @@ on:
         description: Alcance del ensayo
         default: completa
         options: [focal, completa]
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/windows-w1.yml'
-      - 'experiments/phase1/*.py'
-      - 'experiments/phase1/*.json'
-      - 'experiments/phase1/peers/**'
-      - 'desktop/**'
-      - '!desktop/**/*.md'
 
 permissions:
   contents: read

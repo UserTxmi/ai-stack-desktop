@@ -6,7 +6,7 @@ const {port,key,gentle,note,receipt,fixture:{model,efforts,scenarios:{normal,can
 const server=http.createServer({requestTimeout:5000},async(req,res)=>{
   const send=(code,data)=>res.writeHead(code,{'Content-Type':'application/json'}).end(JSON.stringify(data));
   if(req.headers.authorization!==`Bearer ${key}`)return send(401,{});
-  if(req.method==='GET' && req.url==='/v1/models')return send(200,{object:'list',data:[{id:model,object:'model',owned_by:'lab',context_length:32768,max_output_tokens:2048,capabilities:{reasoning:true,effort_tiers:efforts}}]});
+  if(req.method==='GET' && req.url==='/v1/models')return send(200,{object:'list',data:[{id:model,object:'model',owned_by:'lab',context_length:gentle?262144:32768,max_output_tokens:gentle?4096:2048,capabilities:{reasoning:true,effort_tiers:efforts}}]});
   if(req.method!=='POST'||req.url!=='/v1/chat/completions')return send(404,{});
   try {
     let size=0,parts=[];for await(const p of req){size+=p.length;if(size>1048576)return send(413,{});parts.push(p);}
@@ -29,10 +29,11 @@ const server=http.createServer({requestTimeout:5000},async(req,res)=>{
       return res.end('data: [DONE]\n\n');
     }
     const scenario=prompt.includes('LAB-LENTO')?cancel:normal;
-    if(gentle && scenario===cancel && d.tools?.some(t=>t.function?.name==='subagent_parent_message')) writeFileSync(receipt,d.reasoning_effort??'ausente');
+    const child=gentle && scenario===cancel && d.tools?.some(t=>t.function?.name==='subagent_parent_message');
     for(let i=0;i<=scenario.chunks&&!res.destroyed;i++){
       const done=i===scenario.chunks,delta=done?{}:{content:'LAB',...(i===0?{role:'assistant'}:{})};
       res.write('data: '+JSON.stringify({...base,object:'chat.completion.chunk',choices:[{index:0,delta,finish_reason:done?'stop':null}]})+'\n\n');
+      if(i===0 && child)writeFileSync(receipt,d.reasoning_effort??'ausente');
       if(!done)await new Promise(r=>setTimeout(r,scenario.interval_ms));
     }
     res.end('data: [DONE]\n\n');

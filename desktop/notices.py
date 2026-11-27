@@ -14,10 +14,23 @@ ALLOWED = {'MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'Unicode-3.0', '
            'Unlicense', 'Zlib', '0BSD', 'CC0-1.0', 'MIT-0', 'BSL-1.0'}
 
 
-def main(out):
-    packages = json.loads(subprocess.check_output(['cargo', 'metadata', '--locked', '--format-version', '1',
-        '--filter-platform', 'x86_64-pc-windows-msvc'], cwd=ROOT))['packages']
-    pages = ['Avisos de terceros · AI Stack Desktop 0.0.4-dev\nFuentes sin modificaciones disponibles en los enlaces de cada versión.']
+def main(out, gentle=False):
+    metadata = json.loads(subprocess.check_output(['cargo', 'metadata', '--locked', '--format-version', '1',
+        '--filter-platform', 'x86_64-pc-windows-msvc'], cwd=ROOT))
+    packages = metadata['packages']
+    if gentle:
+        nodes = {node['id']: node for node in metadata['resolve']['nodes']}
+        todo = [p['id'] for p in packages if p['name']=='w1-supervisor' and not p['source']]
+        seen = set()
+        while todo:
+            node = todo.pop()
+            if node in seen:
+                continue
+            seen.add(node)
+            todo.extend(d['pkg'] for d in nodes[node]['deps'] if any(k['kind'] != 'dev' for k in d['dep_kinds']))
+        packages = [p for p in packages if p['id'] in seen]
+    version = '0.0.5-dev' if gentle else '0.0.4-dev'
+    pages = [f'Avisos de terceros · AI Stack Desktop {version}\nFuentes sin modificaciones disponibles en los enlaces de cada versión.']
     for p in packages:
         if p['name'] in ('ai-stack-desktop', 'w1-supervisor') and not p['source']:
             continue
@@ -34,15 +47,16 @@ def main(out):
                 pages.append(f.read_text(encoding='utf-8',errors='replace'))
         if name == 'webview2-com-sys':
             loader = (root/'x64/WebView2LoaderStatic.lib').read_bytes()
-    v = '1.0.3296.44'
-    url = f'https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/{v}/microsoft.web.webview2.{v}.nupkg'
-    archive = urllib.request.urlopen(url,timeout=45).read()
-    if hashlib.sha256(archive).hexdigest() != '5b1b19c266ddff33c837ed7965a95bac3dae69b48b5b27f26e5d69f161e9f534':
-        raise ValueError('SDK Microsoft no reconocido')
-    with zipfile.ZipFile(io.BytesIO(archive)) as z:
-        if z.read('build/native/x64/WebView2LoaderStatic.lib') != loader:
-            raise ValueError('WebView2 Loader distinto del SDK revisado')
-        pages.extend(['Microsoft.Web.WebView2 '+v, z.read('LICENSE.txt').decode(), z.read('NOTICE.txt').decode()])
+    if not gentle:
+        v = '1.0.3296.44'
+        url = f'https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/{v}/microsoft.web.webview2.{v}.nupkg'
+        archive = urllib.request.urlopen(url,timeout=45).read()
+        if hashlib.sha256(archive).hexdigest() != '5b1b19c266ddff33c837ed7965a95bac3dae69b48b5b27f26e5d69f161e9f534':
+            raise ValueError('SDK Microsoft no reconocido')
+        with zipfile.ZipFile(io.BytesIO(archive)) as z:
+            if z.read('build/native/x64/WebView2LoaderStatic.lib') != loader:
+                raise ValueError('WebView2 Loader distinto del SDK revisado')
+            pages.extend(['Microsoft.Web.WebView2 '+v, z.read('LICENSE.txt').decode(), z.read('NOTICE.txt').decode()])
     sysroot = Path(subprocess.check_output(['rustc','--print','sysroot'],text=True).strip())
     for license in ('LICENSE-APACHE','LICENSE-MIT','COPYRIGHT'):
         f=sysroot/'share/doc/rust'/license
@@ -51,4 +65,4 @@ def main(out):
 
 
 if __name__ == '__main__':
-    main(Path(sys.argv[1]))
+    main(Path(sys.argv[1]), '--gentle' in sys.argv[2:])
