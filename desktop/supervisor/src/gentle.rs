@@ -2,6 +2,7 @@ use super::*;
 
 /// Entrada dedicada: preparación y servicios comunes; nunca entra en la rama OpenCode.
 pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> Result<()> {
+    let probe = prompt.as_deref() == Some("LAB-DELEGAR");
     prepare_gentle(&install, |p| println!("{} · {}", p.component, p.stage))?;
     let mut sup = Supervisor::new(install.clone());
     sup.inner(true)?;
@@ -172,6 +173,11 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
         sleep(Duration::from_millis(150));
     }
     println!("GPUI lista. Cierre su ventana para detener el stack.");
+    let receipt = install
+        .temporary()
+        .join(sup.profile.as_ref().unwrap())
+        .join("hijo-activo.txt");
+    let mut probed = false;
     while ui.alive() {
         if !mem.alive()
             || sup
@@ -180,6 +186,17 @@ pub fn run_gentle(install: std::sync::Arc<Install>, prompt: Option<String>) -> R
                 .any(|v| v.job.pids().map_or(true, |p| p.is_empty()))
         {
             return Err("Se detuvo un servicio del stack".into());
+        }
+        if probe && !probed && fs::read_to_string(&receipt).is_ok_and(|v| v == "high") {
+            // La prueba necesita la identidad de los Jobs antes de matar a su propietario,
+            // no una reconstrucción a partir de PIDs padre que Windows puede reutilizar.
+            dump(
+                &receipt.with_file_name("jobs-ci.json"),
+                &json!({
+                    "servicios":sup.owned_pids()?, "engram":mem.pids()?, "gpui":ui.pids()?
+                }),
+            )?;
+            probed = true;
         }
         sleep(Duration::from_millis(300));
     }

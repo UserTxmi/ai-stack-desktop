@@ -34,16 +34,30 @@ foreach($mode in '--ci-turno','--ci-delegar') {
             if (!$p.WaitForExit(60000) -or $p.ExitCode -ne 0) { throw 'No terminó limpiamente' }
         } else {
             # El worker → Pi separado debe estar generando el turno lento. La sonda del receptor sólo contiene rol/esfuerzo.
-            Wait-Until $p { @(Get-ChildItem "$Root/preparacion" -Recurse -Filter hijo-activo.txt | Where-Object { (Get-Content -Raw $_.FullName) -eq 'high' }).Count } 180 'delegación activa en receptor'
+            Wait-Until $p {
+                $f=Get-ChildItem "$Root/preparacion" -Recurse -Filter jobs-ci.json | Select-Object -First 1
+                if ($f) {
+                    try { $script:Jobs=Get-Content -Raw -LiteralPath $f.FullName | ConvertFrom-Json; return $Jobs.gpui.Count -gt 2 }
+                    catch {return $false}
+                }
+            } 180 'delegación activa y pertenencia al Job'
             $rows=Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath
-            $ids=@($p.Id); do {$new=@($rows | Where-Object {$_.ParentProcessId -in $ids -and $_.ProcessId -notin $ids} | ForEach-Object ProcessId); $ids+=$new} while($new.Count)
+            $ids=@($Jobs.servicios)+@($Jobs.engram)+@($Jobs.gpui)
             $tree=@($rows|Where-Object {$_.ProcessId -in $ids}); if ($tree.Name -contains 'opencode.exe') {throw 'OpenCode activo'}
             foreach ($name in 'engram.exe','cli-proxy-api.exe','gentle-shell-gpui.exe') {
                 if (@($tree | Where-Object Name -eq $name).Count -ne 1) {throw 'Árbol incompleto o servicio duplicado'}
             }
             if (@($tree | Where-Object {$_.Name -eq 'node.exe' -and $_.ExecutablePath -and !$_.ExecutablePath.StartsWith($Root+'\',[StringComparison]::OrdinalIgnoreCase)}).Count) {throw 'Node externo en el árbol'}
             $handles=@($ids | ForEach-Object {Get-Process -Id $_ -ErrorAction SilentlyContinue}); foreach($h in $handles){try {$null=$h.Handle} catch {}}
-            $p.Kill(); $p.WaitForExit(); foreach($h in $handles){if (!$h.HasExited -and !$h.WaitForExit(10000)){throw 'Quedó un descendiente al perder el propietario'}}
+            try {
+                $p.Kill(); $p.WaitForExit()
+                foreach($h in $handles){
+                    $name=($tree | Where-Object ProcessId -eq $h.Id | Select-Object -First 1).Name
+                    if (!$h.WaitForExit(10000)){throw "Miembro del Job no terminó: $name"}
+                }
+                $remaining=@(Get-CimInstance Win32_Process | Where-Object {$_.ExecutablePath -and $_.ExecutablePath.StartsWith($Root+'\',[StringComparison]::OrdinalIgnoreCase)})
+                if ($remaining.Count) {throw ('Procesos del portable aún activos: '+($remaining.Name -join ', '))}
+            } finally { $handles | ForEach-Object {$_.Dispose()} }
             $pidsObserved=$handles.Count
         }
     } catch {
