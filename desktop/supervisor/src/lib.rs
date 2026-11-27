@@ -23,7 +23,6 @@ mod web_assets;
 mod workspace;
 use http::Api;
 pub use install::Install;
-pub use job::worker_mode;
 use job::{Job, Spec};
 pub use preparation::{prepare, prepare_gentle, verify, PreparationStats, Progress};
 use sha2::{Digest, Sha256};

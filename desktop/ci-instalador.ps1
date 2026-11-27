@@ -12,7 +12,7 @@ function Snapshot($rootPid) {
         $all+=@($rows | Where-Object ProcessId -in $ids)
         $ids=@($rows | Where-Object ParentProcessId -in $ids | ForEach-Object ProcessId)
     }
-    [pscustomobject]@{PrivateMiB=[math]::Round(($all|Measure-Object PrivatePageCount -Sum).Sum/1MB);Processes=$all.Count;
+    [pscustomobject]@{PrivateMiB=[math]::Round(($all|Measure-Object PrivatePageCount -Sum).Sum/1MB);Processes=$all.Count;Ids=@($all.ProcessId);WorkingMiB=[math]::Round(($all|Measure-Object WorkingSetSize -Sum).Sum/1MB);
         CpuSeconds=(($all|Measure-Object UserModeTime -Sum).Sum+($all|Measure-Object KernelModeTime -Sum).Sum)/1e7}
 }
 function Open-Stack($exe,$root,$label) {
@@ -34,9 +34,10 @@ function Open-Stack($exe,$root,$label) {
         $first=[math]::Round($timer.Elapsed.TotalSeconds,1)
         Start-Sleep 3; $a=Snapshot $p.Id; $t=$timer.Elapsed.TotalSeconds;Start-Sleep 8;$b=Snapshot $p.Id
         $cpu=[math]::Round(100*($b.CpuSeconds-$a.CpuSeconds)/($timer.Elapsed.TotalSeconds-$t),1)
-        Write-Output "MEDIDA $label GPUI_s=$ready respuesta_s=$first privados_MiB=$($b.PrivateMiB) procesos=$($b.Processes) CPU_pct_un_nucleo=$cpu"
+        Write-Output "MEDIDA $label GPUI_s=$ready respuesta_s=$first privados_MiB=$($b.PrivateMiB) WS_bruto_MiB=$($b.WorkingMiB) procesos=$($b.Processes) CPU_pct_un_nucleo=$cpu"
         $gui=Get-Process -Id (Get-Content "$profile\gentle\desktop\instance.json" -Raw|ConvertFrom-Json).pid
         if (!$gui.CloseMainWindow() -or !$p.WaitForExit(60000) -or $p.ExitCode){throw 'Cierre incompleto'}
+        if (@(Get-Process -Id $b.Ids -ErrorAction SilentlyContinue).Count){throw 'Quedaron procesos propios después del cierre'}
     } catch {Get-Content $err|Select-String -Pattern '^AI Stack Desktop|^Setup sintético:'; throw}
     finally {if (!$p.HasExited){$p.Kill();$p.WaitForExit()};$p.Dispose()}
 }

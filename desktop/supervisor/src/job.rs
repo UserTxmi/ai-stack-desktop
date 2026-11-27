@@ -1,11 +1,11 @@
-//! Handles exclusivos. El trabajador no recibe argv hasta quedar dentro del Job.
+//! Asignar el hilo primario suspendido antes de que se pueda ejecutar código del hijo.
 use super::*;
 use std::{
     io::{Read, Write},
     mem::{size_of, size_of_val, zeroed},
     os::windows::{
         io::{AsRawHandle, FromRawHandle, OwnedHandle},
-        process::CommandExt,
+        process::{ChildExt, CommandExt},
     },
     process::{Child, Command, Stdio},
     ptr::{null, null_mut},
@@ -16,30 +16,10 @@ use std::{
 };
 use windows_sys::Win32::{NetworkManagement::IpHelper::GetExtendedTcpTable, System::JobObjects::*};
 
-#[derive(Serialize, serde::Deserialize)]
 pub(crate) struct Spec {
     pub exe: PathBuf,
     pub args: Vec<String>,
     pub input: String,
-}
-
-/// La única entrada de este modo es una tubería privada del padre. Sin shell.
-pub fn worker_mode() {
-    if std::env::args_os().nth(1).as_deref() != Some(std::ffi::OsStr::new("--job-worker")) {
-        return;
-    }
-    let run = || -> Option<i32> {
-        let s: Spec = serde_json::from_reader(std::io::stdin().take(1 << 20)).ok()?;
-        let mut child = Command::new(s.exe)
-            .args(s.args)
-            .stdin(Stdio::piped())
-            .creation_flags(0x08000000)
-            .spawn()
-            .ok()?;
-        child.stdin.take()?.write_all(s.input.as_bytes()).ok()?;
-        child.wait().ok()?.code()
-    };
-    std::process::exit(run().unwrap_or(1));
 }
 
 pub(crate) struct Job {
@@ -78,12 +58,15 @@ impl Job {
                 (&limits as *const JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
                 size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
             ))?;
-            let mut child = Command::new(std::env::current_exe().safe()?)
-                .arg("--job-worker")
+            use windows_sys::Win32::System::Threading::{
+                ResumeThread, CREATE_NO_WINDOW, CREATE_SUSPENDED,
+            };
+            let mut child = Command::new(spec.exe)
+                .args(spec.args)
                 .current_dir(cwd)
                 .env_clear()
                 .envs(env)
-                .creation_flags(0x08000000)
+                .creation_flags(CREATE_NO_WINDOW | CREATE_SUSPENDED)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -93,6 +76,11 @@ impl Job {
                 let _ = child.kill();
                 let _ = child.wait();
                 return Err("Asignación al Job denegada".into());
+            }
+            if ResumeThread(child.main_thread_handle().as_raw_handle()) == u32::MAX {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("No se pudo iniciar el proceso supervisado".into());
             }
             let bytes = Arc::new(AtomicU64::new(0));
             let tail = Arc::new(Mutex::new(Vec::new()));
@@ -128,7 +116,12 @@ impl Job {
                 bytes.clone(),
                 capture.then(|| tail.clone()),
             ));
-            serde_json::to_writer(child.stdin.take().unwrap(), &spec).safe()?;
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(spec.input.as_bytes())
+                .safe()?;
             Ok(Self {
                 handle,
                 child,

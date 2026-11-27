@@ -177,7 +177,6 @@ fn backend(mut s: Supervisor) -> (String, bool) {
 }
 
 fn main() {
-    w1_supervisor::worker_mode();
     if let Some(result) = ci(&std::env::args_os().skip(1).collect::<Vec<_>>()) {
         std::process::exit(if result.is_ok() { 0 } else { 1 });
     }

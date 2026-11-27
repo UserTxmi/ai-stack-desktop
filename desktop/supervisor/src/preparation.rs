@@ -223,6 +223,14 @@ impl<F: FnMut(Progress)> Prepare<'_, F> {
         if !components.iter().any(|(id, _)| *id == "gpui") {
             let env = self.build_env(&runtime.join(NODE))?;
             self.sqlite(&runtime, &env)?;
+        } else if self.install.bin.parent() != Some(self.install.root())
+            && !self.install.root().join("bin/ai-stack-gentle.exe").exists()
+        {
+            // Perfil instalado nuevo: el archivo de distribución de Go sólo se usa
+            // para extraer el SDK. Si se repara, acquire lo verifica al descargarlo.
+            // La caché del portable de recuperación permanece disponible sin red.
+            let go = artifact(&self.artifacts, "go");
+            discard(&self.downloads.join(go.url.rsplit('/').next().unwrap()))?;
         }
         self.report("W1", "Verificación completada", 0, None);
         Ok(())

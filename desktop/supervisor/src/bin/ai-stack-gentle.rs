@@ -38,7 +38,6 @@ fn main() {
                 .unwrap_or(1),
         );
     }
-    w1_supervisor::worker_mode();
     let prompt = match std::env::args().nth(1).as_deref() {
         Some("--ci-cuentas") => Some("GS-INTEGRADO".to_string()),
         None => None,
